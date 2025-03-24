@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title><%= locals.title || 'MindFlora' %></title>
+
+    <!-- Google Fonts: Inter -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- CSS 연결 -->
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <nav>
+      <a href="/chat">MindFlora 🌿</a>
+      <div>
+        <a href="/">Home</a>
+        &nbsp;&nbsp;
+        <a href="/about">About</a>
+      </div>
+    </nav>
+
+    <main><%- body %></main>
+
+    <footer>&copy; 2025 PlantGPT — All rights reserved.</footer>
+  </body>
+</html>

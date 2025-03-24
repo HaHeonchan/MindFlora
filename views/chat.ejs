@@ -1,0 +1,81 @@
+<h2 style="text-align: center; margin-bottom: 20px;">식물 챗봇</h2>
+
+<div id="chat-box"></div>
+
+<div class="chat-inputs">
+  <input type="number" id="temp" placeholder="온도 (°C)" />
+  <input type="number" id="humidity" placeholder="습도 (%)" />
+  <input type="text" id="message" placeholder="메시지를 입력하세요" />
+  <button onclick="sendMessage()">전송</button>
+</div>
+
+<script>
+  async function sendMessage() {
+    const message = document.getElementById("message").value;
+    const temp = document.getElementById("temp").value;
+    const humidity = document.getElementById("humidity").value;
+    const chatBox = document.getElementById("chat-box");
+
+    if (!message) {
+      alert("메시지를 입력하세요!");
+      return;
+    }
+
+    chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
+
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, temp, humidity }),
+    });
+
+    const data = await response.json();
+    chatBox.innerHTML += `<p><strong>AI:</strong> ${data.response}</p>`;
+
+    document.getElementById("message").value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+</script>
+
+<style>
+  #chat-box {
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+  }
+
+  .chat-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    max-width: 600px;
+    margin: auto;
+  }
+
+  .chat-inputs input,
+  .chat-inputs button {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .chat-inputs button {
+    background-color: var(--primary);
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .chat-inputs button:hover {
+    background-color: #388e3c;
+  }
+</style>
