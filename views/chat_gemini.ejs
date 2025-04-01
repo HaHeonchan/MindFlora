@@ -10,6 +10,12 @@
 </div>
 
 <script>
+  let userId = localStorage.getItem("geminiUserId");
+  if (!userId) {
+    userId = "user-" + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem("geminiUserId", userId);
+  }
+
   async function sendMessage() {
     const message = document.getElementById("message").value;
     const temp = document.getElementById("temp").value;
@@ -26,7 +32,12 @@
     const response = await fetch("/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, temp, humidity }),
+      body: JSON.stringify({
+        message,
+        temp,
+        humidity,
+        userId
+      }),
     });
 
     const data = await response.json();
