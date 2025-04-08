@@ -23,7 +23,7 @@
 
     chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
 
-    const response = await fetch("/chat", {
+    const response = await fetch("/chat_gpt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, temp, humidity }),

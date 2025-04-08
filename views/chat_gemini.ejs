@@ -33,7 +33,7 @@
 
     chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
 
-    const response = await fetch("/gemini", {
+    const response = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

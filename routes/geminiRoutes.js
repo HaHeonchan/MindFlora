@@ -6,7 +6,7 @@ const geminiController = require("../controllers/geminiController");
 
 const mainLayout = path.join("layouts", "main");
 
-router.get("/gemini", (req, res) => {
+router.get("/chat", (req, res) => {
   const locals = {
     title: "Gemini 챗봇",
   };
@@ -14,6 +14,6 @@ router.get("/gemini", (req, res) => {
   res.render(view, { locals, layout: mainLayout });
 });
 
-router.post("/gemini", geminiController.postChat);
+router.post("/chat", geminiController.postChat);
 
 module.exports = router;
