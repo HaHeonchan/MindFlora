@@ -5,6 +5,8 @@
 <div class="chat-inputs">
   <input type="number" id="temp" placeholder="온도 (°C)" />
   <input type="number" id="humidity" placeholder="습도 (%)" />
+  <input type="number" id="week" placeholder="생애주기 주차" />
+  <input type="text" id="status" placeholder="상태를 입력하세요" />
   <input type="text" id="message" placeholder="메시지를 입력하세요" />
   <button onclick="sendMessage()">전송</button>
 </div>
@@ -18,8 +20,10 @@
 
   async function sendMessage() {
     const message = document.getElementById("message").value;
+    const status = document.getElementById("status").value;
     const temp = document.getElementById("temp").value;
     const humidity = document.getElementById("humidity").value;
+    const week = document.getElementById("week").value;
     const chatBox = document.getElementById("chat-box");
 
     if (!message) {
@@ -36,6 +40,8 @@
         message,
         temp,
         humidity,
+        week,
+        status,
         userId
       }),
     });
