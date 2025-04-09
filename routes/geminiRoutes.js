@@ -6,14 +6,14 @@ const geminiController = require("../controllers/geminiController");
 
 const mainLayout = path.join("layouts", "main");
 
-router.get("/gemini", (req, res) => {
+router.get("/chat", (req, res) => {
   const locals = {
-    title: "마인드플로라 Gemini 챗봇",
+    title: "Gemini 챗봇",
   };
   const view = geminiController.getChatPage();
   res.render(view, { locals, layout: mainLayout });
 });
 
-router.post("/gemini", geminiController.postChat);
+router.post("/chat", geminiController.postChat);
 
 module.exports = router;
