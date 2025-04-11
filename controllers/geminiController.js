@@ -161,4 +161,33 @@ const postChat = async (req, res) => {
   }
 };
 
-module.exports = { getChatPage, postChat };
+// GET /chat/:uid/logs
+const getChatLogsByUid = async (req, res) => {
+  const { uid } = req.params;
+
+  try {
+    const chats = await Chat.find({ uid }).sort({ createdAt: 1 }); // 오래된 순
+    res.json({ uid, logs: chats });
+  } catch (err) {
+    console.error("채팅 로그 조회 오류:", err);
+    res.status(500).json({ error: "채팅 로그를 불러올 수 없습니다." });
+  }
+};
+
+// GET /plant/:uid/data
+const getPlantDataByUid = async (req, res) => {
+  const { uid } = req.params;
+
+  try {
+    const plant = await Plant.findOne({ uid });
+    if (!plant) {
+      return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
+    }
+    res.json({ uid, plant });
+  } catch (err) {
+    console.error("식물 정보 조회 오류:", err);
+    res.status(500).json({ error: "식물 정보를 불러올 수 없습니다." });
+  }
+};
+
+module.exports = { getChatPage, postChat, getChatLogsByUid, getPlantDataByUid };
