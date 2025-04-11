@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const path = require("path");
 const geminiController = require("../controllers/geminiController");
+const diaryReply = require("../db/diaryReply")
 
 const mainLayout = path.join("layouts", "main");
 
