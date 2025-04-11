@@ -3,13 +3,17 @@
  * Updated: 2025-04-08
  * Author: 조형준
  */
-const mongoose = require("mongoose")
-const { Schema } = mongoose
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const chatSchema = Schema({
+const chatSchema = Schema(
+  {
     uid: String,
-    text: String,
+    reqText: String,
+    resText: String,
     sender: String,
-}, { timestamps: true })
+  },
+  { timestamps: true }
+);
 
-module.exports = mongoose.model("Chat", chatSchema)
+module.exports = mongoose.model("Chat", chatSchema);

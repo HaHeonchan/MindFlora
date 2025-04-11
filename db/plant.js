@@ -10,6 +10,7 @@ const plantSchema = Schema({
     uid: String,
     nickname: String,
     plant_kind: String,
+    temperature_data: Array,
     water_data: Array,
     light_data: Array,
     humidity_data: Array,
