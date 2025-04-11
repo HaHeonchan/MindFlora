@@ -7,7 +7,7 @@ const mongoose = require("mongoose")
 const { Schema } = mongoose
 
 const plantSchema = Schema({
-    master_id: String,
+    uid: String,
     nickname: String,
     plant_kind: String,
     water_data: Array,
@@ -15,6 +15,6 @@ const plantSchema = Schema({
     humidity_data: Array,
     acidity_data: Array,
     growth_data: Array
-})
+}, { timestamps: true })
 
 module.exports = mongoose.model("Plant", plantSchema)

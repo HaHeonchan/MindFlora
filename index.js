@@ -39,6 +39,8 @@ app.use("/", require("./routes/main"));
 app.use("/", require("./routes/gptRoutes"));
 app.use("/", require("./routes/geminiRoutes"));
 app.use("/", require("./routes/startRoutes"));
+app.use("/diary", require("./routes/diaryRoutes.js"))
+app.use("/user", require("./routes/mypageRoutes.js"))
 
 app.listen(port, () => {
   console.log(`App listening on port ${port}`);

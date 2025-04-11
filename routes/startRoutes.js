@@ -14,7 +14,7 @@ router.get("/login", kakaoLogin);
 router.post("/nickname", setPlantNickname);
 
 // 식물 선택 라우터
-router.post("/select", plantKindSelect);
+router.put("/select", plantKindSelect);
 
 // 유저 주소 설정 라우터
 router.post("/address", userAddressSave);
