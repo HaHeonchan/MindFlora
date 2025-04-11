@@ -7,6 +7,7 @@ const mongoose = require("mongoose")
 const { Schema } = mongoose
 
 const diarySchema = Schema({
+    uid: String,
     image: String,
     title: String,
     content: String,

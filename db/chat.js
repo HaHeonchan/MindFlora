@@ -7,6 +7,7 @@ const mongoose = require("mongoose")
 const { Schema } = mongoose
 
 const chatSchema = Schema({
+    uid: String,
     text: String,
     sender: String,
 }, { timestamps: true })

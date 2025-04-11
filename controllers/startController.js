@@ -101,13 +101,12 @@ const setPlantNickname = async(req, res) => {
         const { token } = req.cookies
         const { plantNickname } = req.body
 
-        console.log(token)
-
-        const masterId = jwt.verify(token, process.env.JWT_SECRET)
+        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
         
         const plantInfo = {
-            master_id: masterId.uid,
-            nickname: plantNickname
+            uid: uid,
+            nickname: plantNickname,
+            plant_kind: ""
         }
 
         await plantDB.create(plantInfo)
@@ -139,11 +138,11 @@ const plantKindSelect = async(req, res) => {
         const { token } = req.cookies
         const { plantKind } = req.body
 
-        const masterId = jwt.verify(token, process.env.JWT_SECRET)
+        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
 
         const plantInfo = { plant_kind: plantKind }
 
-        await plantDB.updateOne({ master_id: masterId.uid }, plantInfo)
+        await plantDB.findOneAndUpdate({ uid: uid }, plantInfo)
         .then(() => {
             console.log(`Plant select update is success`)
             res.status(200).send(`Plant select update is success`)
