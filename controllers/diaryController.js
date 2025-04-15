@@ -6,6 +6,8 @@
 require(`dotenv`).config()
 const diaryDB = require("../db/diary")
 const diaryReplyDB = require("../db/diaryReply")
+const jwt = require("jsonwebtoken")
+const mongoose = require("mongoose")
 
 const getAllDiary = async(req, res) => {
     try {
@@ -51,11 +53,13 @@ const getDiaryContent = async (req, res) => {
 
 const createDiary = async(req, res) => {
     const { body } = req
+    const { token } = req.cookies
 
-    console.log(body)
+    const { uid } = jwt.verify(token, process.env.JWT_SECRET)
 
     const diaryInfo = {
         ...body,
+        uid: uid,
         writer: "user"
     }
 
@@ -67,15 +71,49 @@ const createDiary = async(req, res) => {
 
 const replyToDiary = async(req, res) => {
     const { body } = req
+    const { token } = req.cookies
 
-    console.log(body)
+    const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+
     
-    await diaryReplyDB.create(body)
+    await diaryReplyDB.create({
+        ...body,
+        uid: uid,
+        sender: "user"
+    })
+}
+
+const getDiaryReply = async(req, res) => {
+    const { diaryReplyId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(diaryReplyId)) {
+        console.log("Invalid diaryReplyId:", diaryReplyId);
+        return res.status(400).send("Invalid diaryReplyId");
+    }
+
+    try {
+        const diaryReply = await diaryReplyDB.findById(diaryReplyId);
+        if (!diaryReply) return res.status(404).send("Diary reply not found");
+
+        const repliedDiary = await diaryDB.findById(diaryReply.diary_id, { title: 1, _id: 1 });
+        if (!repliedDiary) return res.status(404).send("Diary not found");
+
+        const sendData = {
+            ...diaryReply.toObject(),
+            ...repliedDiary.toObject()
+        }
+
+        res.send(sendData);
+    } catch (error) {
+        console.error("Error fetching diary reply:", error);
+        res.status(500).send("Server error");
+    }
 }
 
 module.exports = {
     getAllDiary,
     getDiaryContent,
     createDiary,
-    replyToDiary
+    replyToDiary,
+    getDiaryReply
 }
