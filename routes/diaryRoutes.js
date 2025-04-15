@@ -1,11 +1,11 @@
 /**
  * Title: Diary function router
- * Updated: 2025-04-15
+ * Updated: 2025-04-11
  * Author: 조형준
  */
 const express = require("express")
 const router = express.Router()
-const { getAllDiary, getDiaryContent, createDiary, replyToDiary, getDiaryReply } = require("../controllers/diaryController")
+const { getAllDiary, getDiaryContent, createDiary, replyToDiary } = require("../controllers/diaryController")
 const diaryReply = require("../db/diaryReply")
 
 /**
@@ -35,12 +35,5 @@ router.post("/", createDiary)
  * HTTP Method: POST
  */
 router.post(`/reply`, replyToDiary)
-
-/**
- * Title: Get diary reply
- * API Path: /diary/reply/{params}
- * HTTP Method: GET
- */
-router.get(`/reply/:diaryReplyId`, getDiaryReply)
 
 module.exports = router

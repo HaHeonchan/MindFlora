@@ -1,11 +1,9 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
-const jwt = require("jsonwebtoken")
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
-const diaryReplyDB = require("../db/diaryReply")
 
 // 사용자별 대화 히스토리 저장용 (메모리 방식)
 const chatHistories = {};
@@ -30,9 +28,7 @@ const getChatPage = () => {
 
 // POST 요청 처리 (대화)
 const postChat = async (req, res) => {
-  const { message, temp, humidity, week, status } = req.body;
-  const { token } = req.cookies;
-  const userId = jwt.verify(token, process.env.JWT_SECRET).uid
+  const { message, temp, humidity, userId, week, status } = req.body;
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
   if (!userId) return res.status(400).json({ error: "userId가 필요합니다." });
@@ -165,36 +161,29 @@ const postChat = async (req, res) => {
   }
 };
 
-// GET /chat/logs
+// GET /chat/:uid/logs
 const getChatLogsByUid = async (req, res) => {
-  const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+  const { uid } = req.params;
 
   try {
-    const chats = await Chat.find({ uid })
-    const diaryReplies = await diaryReplyDB.find({ uid })
-
-    const log = [...chats, ...diaryReplies]
-    const orderedLog = log.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    res.json({ uid, logs: orderedLog });
+    const chats = await Chat.find({ uid }).sort({ createdAt: 1 }); // 오래된 순
+    res.json({ uid, logs: chats });
   } catch (err) {
     console.error("채팅 로그 조회 오류:", err);
     res.status(500).json({ error: "채팅 로그를 불러올 수 없습니다." });
   }
 };
 
-// GET /plant/data
+// GET /plant/:uid/data
 const getPlantDataByUid = async (req, res) => {
-  const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+  const { uid } = req.params;
 
   try {
     const plant = await Plant.findOne({ uid });
     if (!plant) {
       return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
     }
-    res.send(plant);
+    res.json({ uid, plant });
   } catch (err) {
     console.error("식물 정보 조회 오류:", err);
     res.status(500).json({ error: "식물 정보를 불러올 수 없습니다." });
