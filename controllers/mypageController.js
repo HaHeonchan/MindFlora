@@ -6,18 +6,11 @@
 require("dotenv").config()
 const userDB = require("../db/user")
 const plantDB = require("../db/plant")
-const diaryDB = require("../db/diary")
-const diaryReplyDB = require("../db/diaryReply")
-const chatDB = require("../db/chat")
 const jwt = require("jsonwebtoken")
 
-/**
- * Content: Get user information from user DB
- * API Path: /user
- * HTTP Method: GET
- */
 const getUserInfo = async(req, res) => {
     const { token } = req.cookies
+    console.log(token)
 
     const { uid } = jwt.verify(token, process.env.JWT_SECRET)
 
@@ -40,40 +33,6 @@ const getUserInfo = async(req, res) => {
     res.status(200).send(myInfo)
 }
 
-/**
- * Title: User logout
- * Content: Delete user token from client
- * API Path: /user/token
- * HTTP Method: GET
- */
-const userLogout = async(req, res) => {
-    res.clearCookie("token", { httpOnly: true }).status(200).send("cookie clear")
-}
-
-const deleteUserAccount = async (req, res) => {
-    try {
-        const { token } = req.cookies
-        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
-
-        await Promise.all([
-            plantDB.deleteOne({ uid }),
-            diaryDB.deleteMany({ uid }),
-            diaryReplyDB.deleteMany({ uid }),
-            chatDB.deleteMany({ uid }),
-            userDB.findByIdAndDelete(uid)
-        ])
-
-        res.status(200)
-        .clearCookie("token", { httpOnly: true })
-        .json({ message: "User account and related data deleted successfully." })
-    } catch (error) {
-        console.error("Error deleting user account:", error)
-        res.status(500).json({ message: "Failed to delete user account." })
-    }
-}
-
 module.exports = {
-    getUserInfo,
-    userLogout,
-    deleteUserAccount
+    getUserInfo
 }

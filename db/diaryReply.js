@@ -7,8 +7,6 @@ const mongoose = require("mongoose")
 const { Schema } = mongoose
 
 const diaryReplySchema = Schema({
-    uid: String,
-    sender: String,
     diary_id: String,
     content: String
 }, { timestamps: true })
