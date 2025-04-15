@@ -117,6 +117,7 @@ const postChat = async (req, res) => {
     const chatSession = model.startChat({
       generationConfig,
       history: chatHistories[userId],
+      tools: [],
     });
 
     const result = await chatSession.sendMessage(fullMessage);
