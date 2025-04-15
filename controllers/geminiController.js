@@ -4,7 +4,6 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
-const User = require("../db/user");
 
 // 사용자별 대화 히스토리 저장용 (메모리 방식)
 const chatHistories = {};
@@ -119,7 +118,7 @@ const postChat = async (req, res) => {
     const chatSession = model.startChat({
       generationConfig,
       history: chatHistories[userId],
-      tools: [], // 이것만 명시적으로 둬도 괜찮음
+      tools: [],
     });
 
     const result = await chatSession.sendMessage(fullMessage);
