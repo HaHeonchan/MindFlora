@@ -26,7 +26,7 @@ const model = genAI.getGenerativeModel({
 
 // GET 요청 시 보여줄 페이지
 const getChatPage = () => {
-  return "chat_gdiaryReplyDBemini";
+  return "chat_gemini";
 };
 
 // POST 요청 처리 (대화)
