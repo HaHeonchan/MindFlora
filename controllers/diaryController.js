@@ -8,6 +8,7 @@ const diaryDB = require("../db/diary")
 const diaryReplyDB = require("../db/diaryReply")
 const jwt = require("jsonwebtoken")
 const mongoose = require("mongoose")
+const plantDB = require("../db/plant")
 
 const getAllDiary = async(req, res) => {
     const { token } = req.cookies
@@ -86,7 +87,7 @@ const replyToDiary = async(req, res) => {
     })
 }
 
-const getDiaryReply = async(req, res) => {
+const getDiaryReplyById = async(req, res) => {
     const { diaryReplyId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(diaryReplyId)) {
@@ -113,10 +114,32 @@ const getDiaryReply = async(req, res) => {
     }
 }
 
+const getDiaryReplyByDiaryId = async(req, res) => {
+    const { id } = req.params
+
+    const { token } = req.cookies
+    const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+
+    try {
+        const diaryReply = await diaryReplyDB.find({ diary_id: id })
+        const plantNickname = await plantDB.find({ uid: uid }, { nickname: 1 })
+
+        const resData = {
+            ...diaryReply[0].toObject(),
+            ...plantNickname[0].toObject()
+        }
+
+        res.send(resData)
+    } catch {
+        res.status(500).send("diary reply is not ready")
+    }
+}
+
 module.exports = {
     getAllDiary,
     getDiaryContent,
     createDiary,
     replyToDiary,
-    getDiaryReply
+    getDiaryReplyById,
+    getDiaryReplyByDiaryId
 }
