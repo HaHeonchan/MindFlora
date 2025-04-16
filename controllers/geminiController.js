@@ -1,11 +1,12 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
-const diaryReplyDB = require("../db/diaryReply")
+const diaryDB = require("../db/diary");
+const diaryReplyDB = require("../db/diaryReply");
 
 // 사용자별 대화 히스토리 저장용 (메모리 방식)
 const chatHistories = {};
@@ -60,7 +61,6 @@ const postChat = async (req, res) => {
     if (week !== undefined) plant.growth_data.push(week);
   }
   await plant.save();
-
 
   // 첫 대화인 경우: 시스템 프롬프트 설정
   if (!chatHistories[userId]) {
@@ -148,17 +148,76 @@ const postChat = async (req, res) => {
   }
 };
 
+// POST /diary
+const createDiaryReply = async (req, res) => {
+  const { token } = req.cookies;
+
+  const { id } = req.params;
+
+  const diaryContent = await diaryDB.findById(id);
+
+  if (!diaryContent.title || !diaryContent.content) {
+    return res.status(400).json({ error: "제목과 내용은 필수입니다." });
+  }
+
+  try {
+    const { uid } = jwt.verify(token, process.env.JWT_SECRET);
+
+    const prompt = `사용자가 방금 작성한 일기를 읽고 식물의 입장에서 짧게 감정이 담긴 코멘트를 해 줘. 말투는 식물스럽게. 너무 유식하거나 AI 같은 표현은 피하고, 자연스럽게 위로하거나 공감하거나 함께 기뻐해 줘.
+일기 내용: """${diaryContent.content}"""`;
+
+    chatHistories[uid].push({
+      role: "user",
+      parts: [{ text: prompt }],
+    });
+
+    const chatSession = model.startChat({
+      generationConfig,
+      history: chatHistories[uid],
+      tools: [],
+    });
+
+    const result = await chatSession.sendMessage(prompt);
+    const reply = await result.response.text();
+
+    chatHistories[uid].push({
+      role: "model",
+      parts: [{ text: reply }],
+    });
+
+    const diary = new diaryReplyDB({
+      uid,
+      sender: "gemini",
+      diary_id: id,
+      content: reply,
+    });
+
+    await diary.save();
+
+    res.status(200).json({
+      message: "일기와 응답이 저장되었습니다.",
+      content: diaryContent.content,
+      geminiReply: reply,
+    });
+  } catch (err) {
+    console.error("일기 저장/응답 생성 실패:", err);
+    res.status(500).json({ error: "일기 저장 또는 응답 생성 중 오류 발생" });
+  }
+};
+
 // GET /chat/logs
 const getChatLogsByUid = async (req, res) => {
   const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+  const { uid } = jwt.verify(token, process.env.JWT_SECRET);
 
   try {
-    const chats = await Chat.find({ uid })
-    const diaryReplies = await diaryReplyDB.find({ uid })
+    const chats = await Chat.find({ uid });
+    const diaryReplies = await diaryReplyDB.find({ uid });
 
-    const log = [...chats, ...diaryReplies]
-    const orderedLog = log.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const log = [...chats, ...diaryReplies];
+    const orderedLog = log.sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
 
     res.json({ uid, logs: orderedLog });
   } catch (err) {
@@ -170,12 +229,14 @@ const getChatLogsByUid = async (req, res) => {
 // GET /plant/data
 const getPlantDataByUid = async (req, res) => {
   const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+  const { uid } = jwt.verify(token, process.env.JWT_SECRET);
 
   try {
     const plant = await Plant.findOne({ uid });
     if (!plant) {
-      return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
+      return res
+        .status(404)
+        .json({ error: "해당 사용자의 식물 정보가 없습니다." });
     }
     res.send(plant);
   } catch (err) {
@@ -184,4 +245,10 @@ const getPlantDataByUid = async (req, res) => {
   }
 };
 
-module.exports = { getChatPage, postChat, getChatLogsByUid, getPlantDataByUid };
+module.exports = {
+  getChatPage,
+  postChat,
+  getChatLogsByUid,
+  getPlantDataByUid,
+  createDiaryReply,
+};
