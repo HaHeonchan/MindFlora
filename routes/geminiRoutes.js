@@ -18,5 +18,6 @@ router
 
 router.get("/chat/logs", geminiController.getChatLogsByUid);
 router.get("/plant/:uid", geminiController.getPlantDataByUid);
+router.post("/diaryReply/:id", geminiController.createDiaryReply);
 
 module.exports = router;
