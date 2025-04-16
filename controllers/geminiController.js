@@ -148,11 +148,10 @@ const postChat = async (req, res) => {
   }
 };
 
-// POST /diary
 const createDiaryReply = async (req, res) => {
   const { token } = req.cookies;
 
-  const { id } = req.params;
+  const { id } = req.body;
 
   const diaryContent = await diaryDB.findById(id);
 
