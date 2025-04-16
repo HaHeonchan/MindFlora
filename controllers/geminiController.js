@@ -32,7 +32,8 @@ const getChatPage = () => {
 const postChat = async (req, res) => {
   const { message, temp, humidity, week, status } = req.body;
   const { token } = req.cookies;
-  const userId = jwt.verify(token, process.env.JWT_SECRET).uid
+  // const userId = jwt.verify(token, process.env.JWT_SECRET).uid
+  const userId = "user-gjscks";
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
   if (!userId) return res.status(400).json({ error: "userId가 필요합니다." });
@@ -144,7 +145,7 @@ const postChat = async (req, res) => {
     res.json({ response: text });
   } catch (err) {
     console.error("Gemini 오류:", err);
-    res.status(500).json({ err: "구글은 AI 포기하는게 맛따." });
+    res.status(500).json({ err: "" });
   }
 };
 
