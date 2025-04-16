@@ -10,8 +10,11 @@ const jwt = require("jsonwebtoken")
 const mongoose = require("mongoose")
 
 const getAllDiary = async(req, res) => {
+    const { token } = req.cookies
+    const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+    
     try {
-        await diaryDB.find({}, { _id: 1, title: 1, image: 1, writer: 1, createdAt: 1 })
+        await diaryDB.find({ uid }, { _id: 1, title: 1, image: 1, writer: 1, createdAt: 1 })
         .then(allDiaryHeader => {
             console.log(allDiaryHeader)
             res.status(200).send(allDiaryHeader)
