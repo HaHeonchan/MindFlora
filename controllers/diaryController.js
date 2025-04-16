@@ -67,8 +67,8 @@ const createDiary = async(req, res) => {
     }
 
     await diaryDB.create(diaryInfo)
-    .then(() => {
-        res.send(`success`)
+    .then(createdDiary => {
+        res.send(createdDiary)
     })
 }
 
