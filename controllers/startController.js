@@ -174,7 +174,7 @@ const userAddressSave = async(req, res) => {
         const { uid } = jwt.verify(token, process.env.JWT_SECRET)
 
         const addressInfo = {
-            address: address.address + " " + address.detailAddress
+            address: (address.address + " " + address.detailAddress).trim()
         }
 
         await userDB.findByIdAndUpdate(uid, addressInfo)
