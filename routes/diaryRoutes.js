@@ -8,12 +8,7 @@ const router = express.Router()
 const { getAllDiary, getDiaryContent, createDiary, replyToDiary, getDiaryReplyById, getDiaryReplyByDiaryId } = require("../controllers/diaryController")
 const diaryReply = require("../db/diaryReply")
 
-/**
- * Title: Get all diary
- * API Path: /diary
- * HTTP Method: GET
- */
-router.get("/", getAllDiary)
+router.post("/", createDiaryWithReply)
 
 /**
  * Title: Get diary by id
