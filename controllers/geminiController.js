@@ -113,62 +113,6 @@ const postChat = async (req, res) => {
   }
 };
 
-const createDiaryReply = async (req, res) => {
-  const { token } = req.cookies;
-
-  const { id } = req.body;
-
-  const diaryContent = await diaryDB.findById(id);
-
-  if (!diaryContent.title || !diaryContent.content) {
-    return res.status(400).json({ error: "제목과 내용은 필수입니다." });
-  }
-
-  try {
-    const { uid } = jwt.verify(token, process.env.JWT_SECRET);
-
-    const prompt = `사용자가 방금 작성한 일기를 읽고 식물의 입장에서 짧게 감정이 담긴 코멘트를 해 줘. 말투는 식물스럽게. 너무 유식하거나 AI 같은 표현은 피하고, 자연스럽게 위로하거나 공감하거나 함께 기뻐해 줘.
-일기 내용: """${diaryContent.content}"""`;
-
-    chatHistories[uid].push({
-      role: "user",
-      parts: [{ text: prompt }],
-    });
-
-    const chatSession = model.startChat({
-      generationConfig,
-      history: chatHistories[uid],
-      tools: [],
-    });
-
-    const result = await chatSession.sendMessage(prompt);
-    const reply = await result.response.text();
-
-    chatHistories[uid].push({
-      role: "model",
-      parts: [{ text: reply }],
-    });
-
-    const diary = new diaryReplyDB({
-      uid,
-      sender: "gemini",
-      diary_id: id,
-      content: reply,
-    });
-
-    await diary.save();
-
-    res.status(200).json({
-      message: "일기와 응답이 저장되었습니다.",
-      content: diaryContent.content,
-      geminiReply: reply,
-    });
-  } catch (err) {
-    console.error("일기 저장/응답 생성 실패:", err);
-    res.status(500).json({ error: "일기 저장 또는 응답 생성 중 오류 발생" });
-  }
-};
-
 // GET /chat/logs
 const getChatLogsByUid = async (req, res) => {
   const { token } = req.cookies;
@@ -196,9 +140,7 @@ const getPlantDataByUid = async (req, res) => {
   try {
     const plant = await Plant.findOne({ uid });
     if (!plant) {
-      return res
-        .status(404)
-        .json({ error: "해당 사용자의 식물 정보가 없습니다." });
+      return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
     }
     res.send(plant);
   } catch (err) {
@@ -208,4 +150,3 @@ const getPlantDataByUid = async (req, res) => {
 };
 
 module.exports = { getChatPage, postChat, getChatLogsByUid, getPlantDataByUid };
-
