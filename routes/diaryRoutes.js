@@ -5,44 +5,10 @@
  */
 const express = require("express")
 const router = express.Router()
-const { getAllDiary, getDiaryContent, createDiary, replyToDiary, getDiaryReplyById, getDiaryReplyByDiaryId } = require("../controllers/diaryController")
+const { createDiaryWithReply } = require("../controllers/diaryController")
 const diaryReply = require("../db/diaryReply")
 
 router.post("/", createDiaryWithReply)
 
-/**
- * Title: Get diary by id
- * API Path: /diary/:id
- * HTTP Method: GET
- */
-router.get("/:id", getDiaryContent)
-
-/**
- * Title: Create diary
- * API Path: /diary
- * HTTP Method: POST
- */
-router.post("/", createDiary)
-
-/**
- * Title: Reply to diary
- * API Path: /diary/reply
- * HTTP Method: POST
- */
-router.post(`/reply`, replyToDiary)
-
-/**
- * Title: Get diary reply
- * API Path: /diary/reply/{params}
- * HTTP Method: GET
- */
-router.get(`/reply/:diaryReplyId`, getDiaryReplyById)
-
-/**
- * Title: Get diary reply by diary id
- * API Path: /diary/reply/diary/{id}
- * HTTP Method: GET
- */
-router.get("/reply/diary/:id", getDiaryReplyByDiaryId)
 
 module.exports = router
