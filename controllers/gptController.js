@@ -1,5 +1,9 @@
 const OpenAI = require("openai");
 const jwt = require("jsonwebtoken");
+const ffi = require('ffi-napi');
+const fs = require("fs");
+const path = require("path");
+
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
@@ -19,10 +23,11 @@ const getChatPage = () => {
 const postChat = async (req, res) => {
   const { message, temp, humidity, week, status } = req.body;
   const { token } = req.cookies;
-  const userId = "user-gjscks"; // 필요 시 JWT 인증 복원
+  const userId = "user-gjscks"; // 배포 시 JWT에서 추출
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
+  // 🔁 식물 데이터 로딩 (기존 코드와 동일)
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
     plant = new Plant({
@@ -46,37 +51,39 @@ const postChat = async (req, res) => {
   }
   await plant.save();
 
-  // 첫 대화 시 시스템 메시지 추가
-  if (!chatHistories[userId]) {
-    const systemPrompt = `너는 사용자가 키우는 식물, 애기장대야...`; // 생략: 기존 프롬프트 그대로
-    chatHistories[userId] = [
-      { role: "system", content: systemPrompt },
-      { role: "assistant", content: "안녕! 나는 애기장대야. 오늘도 잘 와줬구나. 😊" },
-    ];
-  }
-
+  // 🌱 사용자 메시지에 환경 정보를 포함
   const fullMessage = `온도: ${temp || "정보 없음"}°C, 습도: ${humidity || "정보 없음"}%, 생애주기: ${week || 1}주차, 상태: ${status || "정보 없음"}\n${message}`;
 
+  // 📄 매 대화마다 프롬프트 불러오기
+  const systemPrompt = loadPrompt({ nickname: plant.nickname || "애기장대" });
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...(chatHistories[userId] || []),
+    { role: "user", content: fullMessage },
+  ];
+
+  // 대화 히스토리 저장
+  if (!chatHistories[userId]) {
+    chatHistories[userId] = [];
+  }
   chatHistories[userId].push({ role: "user", content: fullMessage });
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // 또는 gpt-3.5-turbo
-      messages: chatHistories[userId],
-      temperature: 0.7,
-      max_tokens: 2048,
+      model: "gpt-4.1-nano-2025-04-14",
+      messages,
+      max_completion_tokens: 2048,
     });
-  
-    // 응답 제대로 왔는지 검사
-    if (!completion || !completion.choices || !completion.choices.length) {
-      console.error("GPT 응답 형식 이상:", completion);
-      return res.status(500).json({ error: "GPT 응답 오류: 결과가 없습니다." });
-    }
-  
+
     const text = completion.choices[0].message.content;
+
+    // 응답도 히스토리에 저장
+    chatHistories[userId].push({ role: "assistant", content: text });
+
     res.json({ response: text });
   } catch (err) {
-    console.error("❌ GPT 호출 중 에러:", err.response?.data || err.message || err);
+    console.error("GPT 호출 에러:", err.response?.data || err.message || err);
     res.status(500).json({ error: "GPT 호출 실패" });
   }
 };
@@ -112,3 +119,23 @@ const getPlantDataByUid = async (req, res) => {
 };
 
 module.exports = { getChatPage, postChat, getChatLogsByUid, getPlantDataByUid };
+
+
+// 프롬프트 파일 읽기
+const loadPrompt = (variables = {}) => {
+  try {
+    const promptPath = path.join(__dirname, "../prompt/prompt.txt");
+    let prompt = fs.readFileSync(promptPath, "utf-8");
+
+    // {{변수}} 형식 템플릿 치환
+    for (const [key, value] of Object.entries(variables)) {
+      const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+      prompt = prompt.replace(pattern, value);
+    }
+
+    return prompt;
+  } catch (err) {
+    console.error("프롬프트 파일 로딩 실패:", err.message);
+    return "너는 애기장대야. 사용자에게 친절하게 응답해줘.";
+  }
+};
