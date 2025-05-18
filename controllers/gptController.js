@@ -7,70 +7,76 @@ const path = require("path");
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
 const Memory = require("../db/memory");
+const Summary = require("../db/summary"); // ✅ 새 모델 추가 (요약 저장)
 const diaryReplyDB = require("../db/diaryReply");
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const getChatPage = () => "chat_gemini";
 
-// ✅ 메모리 캐시 (앱 꺼졌다 켜져도 복구용 캐시)
 const chatMemory = {};
 
 const postChat = async (req, res) => {
   const { message, temp, humidity, week, status } = req.body;
   const { token } = req.cookies;
-  const userId = "user-gjscks"
-
-  // let userId;
-  
-  // try {
-  //   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  //   userId = decoded.uid;
-  // } catch (err) {
-  //   return res.status(401).json({ error: "인증 실패: JWT 오류" });
-  // }
+  const userId = "user-gjscks";
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
-  // ✅ 식물 정보 갱신
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
-    plant = new Plant({
-      uid: userId,
-      nickname: "애기장대",
-      plant_kind: "애기장대",
-      temperature_data: temp ? [temp] : [],
-      humidity_data: humidity ? [humidity] : [],
-      water_data: [null],
-      light_data: [null],
-      acidity_data: [null],
-      growth_data: week ? [week] : [],
-    });
+    plant = new Plant({ uid: userId, nickname: "애기장대", plant_kind: "애기장대",
+      temperature_data: temp ? [temp] : [], humidity_data: humidity ? [humidity] : [],
+      water_data: [null], light_data: [null], acidity_data: [null], growth_data: week ? [week] : [] });
   } else {
     if (humidity !== undefined) plant.humidity_data.push(humidity);
     if (temp !== undefined) plant.temperature_data.push(temp);
-    plant.water_data.push(null);
-    plant.light_data.push(null);
-    plant.acidity_data.push(null);
+    plant.water_data.push(null); plant.light_data.push(null); plant.acidity_data.push(null);
     if (week !== undefined) plant.growth_data.push(week);
   }
   await plant.save();
 
   const fullMessage = `사용자 메세지 : ${message}\n온도: ${temp || "정보 없음"}°C, 습도: ${humidity || "정보 없음"}%, 생애주기: ${week || 1}주차, 상태: ${status || "정보 없음"}`;
-  const systemPrompt = loadPrompt({ nickname: plant.nickname || "애기장대" });
 
-  // ✅ GPT 컨텍스트용 메모리 초기화 (DB에서 불러오기)
   if (!chatMemory[userId]) {
     const mems = await Memory.find({ uid: userId }).sort({ createdAt: 1 }).lean();
     chatMemory[userId] = mems.map(m => ({ role: m.role, content: m.content }));
   }
 
-  // ✅ GPT 메시지 구성
+  const MAX_RECENT = 30;
+  let summary = "";
+
+  if (chatMemory[userId].length > 100 && chatMemory[userId].length % 20 === 0) {
+    const oldHistory = chatMemory[userId].slice(0, -MAX_RECENT);
+    const previousSummary = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+
+    const summaryResponse = await openai.chat.completions.create({
+      model: "gpt-4.1-nano-2025-04-14",
+      messages: [
+        { role: "system", content: "다음 사용자-어시스턴트 대화를 요약해줘. 핵심만 간결하게 서술해줘." },
+        ...oldHistory
+      ],
+      max_tokens: 300,
+    });
+
+    summary = summaryResponse.choices?.[0]?.message?.content || "";
+    if (summary) {
+      await Summary.create({ uid: userId, content: summary });
+    }
+  } else {
+    const existing = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+    summary = existing?.content || "";
+  }
+
+  const basePrompt = loadPrompt({ nickname: plant.nickname || "애기장대" });
+  const systemPrompt = summary ? `${basePrompt}\n\n[이전 대화 요약]\n${summary}` : basePrompt;
+
+  console.log(basePrompt);
+
+  const recentHistory = chatMemory[userId].slice(-MAX_RECENT);
   const messages = [
     { role: "system", content: systemPrompt },
-    ...chatMemory[userId],
+    ...recentHistory,
     { role: "user", content: fullMessage }
   ];
 
@@ -81,9 +87,9 @@ const postChat = async (req, res) => {
       max_completion_tokens: 2048,
     });
 
-    const reply = completion.choices[0].message.content;
+    const reply = completion.choices?.[0]?.message?.content;
+    if (!reply) return res.status(500).json({ error: "GPT 응답이 비어있습니다." });
 
-    // ✅ Memory 캐시와 DB에 저장
     const memoryDocs = [
       { uid: userId, role: "user", content: fullMessage },
       { uid: userId, role: "assistant", content: reply },
@@ -91,14 +97,7 @@ const postChat = async (req, res) => {
     await Memory.insertMany(memoryDocs);
     chatMemory[userId].push(...memoryDocs.map(({ role, content }) => ({ role, content })));
 
-    // ✅ 프론트 연동용 Chat DB 저장
-    await Chat.create({
-      uid: userId,
-      reqText: fullMessage,
-      resText: reply,
-      sender: "user",
-    });
-
+    await Chat.create({ uid: userId, reqText: fullMessage, resText: reply, sender: "user" });
     res.json({ response: reply });
   } catch (err) {
     console.error("GPT 호출 에러:", err.response?.data || err.message || err);
@@ -109,7 +108,6 @@ const postChat = async (req, res) => {
 const getPlantDataByUid = async (req, res) => {
   const { token } = req.cookies;
   const { uid } = jwt.verify(token, process.env.JWT_SECRET);
-
   try {
     const plant = await Plant.findOne({ uid });
     if (!plant) return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
@@ -120,17 +118,14 @@ const getPlantDataByUid = async (req, res) => {
   }
 };
 
-// ✅ 프롬프트 불러오기
 const loadPrompt = (variables = {}) => {
   try {
     const promptPath = path.join(__dirname, "../prompt/prompt.txt");
     let prompt = fs.readFileSync(promptPath, "utf-8");
-
     for (const [key, value] of Object.entries(variables)) {
       const pattern = new RegExp(`{{\\s*${key}\\s*}}`, "g");
       prompt = prompt.replace(pattern, value);
     }
-
     return prompt;
   } catch (err) {
     console.error("프롬프트 파일 로딩 실패:", err.message);
@@ -141,11 +136,9 @@ const loadPrompt = (variables = {}) => {
 const getChatLogsByUid = async (req, res) => {
   const { token } = req.cookies;
   const { uid } = jwt.verify(token, process.env.JWT_SECRET);
-
   try {
     const chats = await Chat.find({ uid });
     const diaryReplies = await diaryReplyDB.find({ uid });
-
     const log = [...chats, ...diaryReplies].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json({ uid, logs: log });
   } catch (err) {
@@ -157,6 +150,6 @@ const getChatLogsByUid = async (req, res) => {
 module.exports = {
   getChatPage,
   postChat,
-  getChatLogsByUid, 
+  getChatLogsByUid,
   getPlantDataByUid,
 };
