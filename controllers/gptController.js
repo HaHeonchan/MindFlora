@@ -3,11 +3,12 @@ const jwt = require("jsonwebtoken");
 const ffi = require("ffi-napi");
 const fs = require("fs");
 const path = require("path");
+const https = require('https');
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
 const Memory = require("../db/memory");
-const Summary = require("../db/summary"); // ✅ 새 모델 추가 (요약 저장)
+const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -17,11 +18,22 @@ const getChatPage = () => "chat_gemini";
 const chatMemory = {};
 
 const postChat = async (req, res) => {
-  const { message, temp, humidity, week, status } = req.body;
+  const { message, temp, humidity, week, status, apiKey } = req.body;
   const { token } = req.cookies;
+  // const userId = jwt.verify(token, process.env.JWT_SECRET).uid;
   const userId = "user-gjscks";
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
+
+  try {
+    const data = await getSensorValue(apiKey);
+
+    console.log("센서 데이터:", data.sensors);
+    console.log("전원 상태:", data.onoff);
+    console.log("LED 값:", data.led);
+  } catch (err) {
+    console.error("에러 발생:", err);
+  }
 
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
@@ -153,3 +165,46 @@ module.exports = {
   getChatLogsByUid,
   getPlantDataByUid,
 };
+
+function getSensorValue(apiKey) {
+  const URL = `https://blackwhite12.pythonanywhere.com/get_binary/${apiKey}`;
+
+  return new Promise((resolve, reject) => {
+    https.get(URL, (response) => {
+      const chunks = [];
+
+      response.on("data", (chunk) => chunks.push(chunk));
+
+      response.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+        let offset = 0;
+        const parsedData = {};
+
+        while (offset < buffer.length) {
+          const key = buffer.slice(offset, offset + 8).toString();
+          const type = buffer[offset + 8];
+          const len = buffer[offset + 9];
+          const value = buffer.slice(offset + 10, offset + 10 + len);
+
+          switch (type) {
+            case 0x01:
+              parsedData.sensors = [...value];
+              break;
+            case 0x02:
+              parsedData.onoff = value.toString();
+              break;
+            case 0x03:
+              parsedData.led = value[0];
+              break;
+          }
+
+          offset += 8 + 1 + 1 + len;
+        }
+
+        resolve(parsedData);
+      });
+
+      response.on("error", (err) => reject(err));
+    }).on("error", (err) => reject(err));
+  });
+}
