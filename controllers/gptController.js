@@ -18,19 +18,29 @@ const getChatPage = () => "chat_gemini";
 const chatMemory = {};
 
 const postChat = async (req, res) => {
-  const { message, temp, humidity, week, status, apiKey } = req.body;
+  const { message, week, status, apiKey } = req.body;
   const { token } = req.cookies;
   // const userId = jwt.verify(token, process.env.JWT_SECRET).uid;
   const userId = "user-gjscks";
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
+
+  let data;
+  let temp, humidity, soilMoisture, light, ledOn, ledPower;
   try {
-    const data = await getSensorValue(apiKey);
+    data = await getSensorValue(apiKey);
 
     console.log("센서 데이터:", data.sensors);
+    temp = data.sensors[0];
+    humidity = data.sensors[1];
+    soilMoisture = data.sensors[2];
+    light = data.sensors[3];
+    
     console.log("전원 상태:", data.onoff);
+    ledOn = data.onoff;
     console.log("LED 값:", data.led);
+    ledPower = data.led;
   } catch (err) {
     console.error("에러 발생:", err);
   }
@@ -48,7 +58,16 @@ const postChat = async (req, res) => {
   }
   await plant.save();
 
-  const fullMessage = `사용자 메세지 : ${message}\n온도: ${temp || "정보 없음"}°C, 습도: ${humidity || "정보 없음"}%, 생애주기: ${week || 1}주차, 상태: ${status || "정보 없음"}`;
+  const fullMessage = `
+  사용자 메세지 : ${message}\n
+  온도: ${temp || "정보 없음"}°C, 
+  습도: ${humidity || "정보 없음"}%, 
+  토지 습도: ${soilMoisture || "정보 없음"}%, 
+  조도: ${light || "정보 없음"},
+  식물등 상태: ${ledOn || "정보 없음"},
+  식물등 파워: ${ledPower || "정보 없음"},
+  생애주기: ${week || 1}주차, 
+  상태: ${status || "정보 없음"}`;
 
   if (!chatMemory[userId]) {
     const mems = await Memory.find({ uid: userId }).sort({ createdAt: 1 }).lean();
@@ -83,7 +102,7 @@ const postChat = async (req, res) => {
   const basePrompt = loadPrompt({ nickname: plant.nickname || "애기장대" });
   const systemPrompt = summary ? `${basePrompt}\n\n[이전 대화 요약]\n${summary}` : basePrompt;
 
-  console.log(basePrompt);
+  console.log(systemPrompt);
 
   const recentHistory = chatMemory[userId].slice(-MAX_RECENT);
   const messages = [
