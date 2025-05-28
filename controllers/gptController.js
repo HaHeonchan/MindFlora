@@ -14,7 +14,7 @@ const diaryReplyDB = require("../db/diaryReply");
 const { json } = require("stream/consumers");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-'/generate_key'
+
 const getChatPage = () => "chat_gemini";
 
 const chatMemory = {};
@@ -154,7 +154,9 @@ const postChatforDLL = async (req, res) => {
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
   
-  res.json({ response: content });
+  const analyze_text_result = JSON.parse(lib.analyze_text(content, api_key));
+
+  res.json({ response: content, prompt: fullMessage, analyze: analyze_text_result });
 };
 
 

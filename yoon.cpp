@@ -79,6 +79,7 @@ struct TextAnalysisResult {
     double valence = 0.0;
     double arousal = 0.0;
     double impressiveness = 0.0;
+    bool water_pump = false;
 };
 
 inline void to_json(json& j, const TextAnalysisResult& result) {
@@ -88,7 +89,8 @@ inline void to_json(json& j, const TextAnalysisResult& result) {
         {"impression", result.impression},
         {"valence", result.valence},
         {"arousal", result.arousal},
-        {"impressiveness", result.impressiveness}
+        {"impressiveness", result.impressiveness},
+        {"water_pump", result.water_pump}
     };
 }
 
@@ -99,6 +101,7 @@ inline void from_json(const json& j, TextAnalysisResult& result) {
     j.at("valence").get_to(result.valence);
     j.at("arousal").get_to(result.arousal);
     j.at("impressiveness").get_to(result.impressiveness);
+    j.at("water_pump").get_to(result.water_pump);
 }
 
 //데이터베이스 연결 및 초기화 함수 ==================================================
@@ -174,6 +177,11 @@ bool InitializeDB() {
 
     return true;
 }
+extern "C" __declspec(dllexport)
+bool initialize_db() {
+    return InitializeDB();
+}
+
 
 // Answer 구조체를 DB에 저장하는 함수
 bool SaveAnswerToDB(const Answer& answer, const std::string& table_name) {
@@ -334,7 +342,8 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
                 "  \"emotion_label\": \"감정라벨\",\n"
                 "  \"valence\": 0.0,\n"
                 "  \"arousal\": 0.0,\n"
-                "  \"impressiveness\": 0.0\n"
+                "  \"impressiveness\": 0.0,\n"
+                "  \"water_pump\": false\n"
                 "}\n"
                 "조건:\n"
                 "- keywords: 정확히 3개의 핵심 키워드 추출\n"
@@ -342,6 +351,7 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
                 "- valence: 0 ~ 2 사이의 실수\n"
                 "- arousal: 0 ~ 1 사이의 실수\n"
                 "- impressiveness: 0 ~ 1 사이의 실수\n"
+                "- water_pump: 물을 틀겠다고 한 경우 true, 아닐경우 false\n"
                 "분석할 텍스트: " + utf8_text;
 
             // 나머지 코드는 동일
@@ -351,6 +361,7 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
             result.valence = analysis_response["valence"].get<double>();
             result.arousal = analysis_response["arousal"].get<double>();
             result.impressiveness = analysis_response["impressiveness"].get<double>();
+            result.water_pump = analysis_response["water_pump"].get<bool>();
 
             // 기존 인상 점수 계산 로직 유지
             double norm_valence = (result.valence + 1.0) / 2.0;
@@ -375,6 +386,7 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
         result.valence = 0.0;
         result.arousal = 0.0;
         result.impressiveness = 0.0;
+        result.water_pump = 0;
     }
 
     return result;
@@ -575,6 +587,21 @@ void NonSector(const Answer& newAnswer) {
     // 실시간 DB 저장 유지
     SaveAnswerToDB(newAnswer, "nonsector");
 }
+extern "C" __declspec(dllexport)
+bool add_nonsector_from_json(const char* json_str) {
+    static std::string err_msg;
+
+    try {
+        json j = json::parse(json_str);
+        Answer ans = j.get<Answer>();  // 이미 from_json 정의돼 있어야 함
+        NonSector(ans);
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] JSON 파싱 또는 NonSector 실패: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 
 void Sector(const Answer& answer, string api_key) {
     ChatCache* cache = ChatCache::getInstance();
@@ -642,6 +669,18 @@ void EndChat() {
     ChatCache* cache = ChatCache::getInstance();
     cache->ClearCache();
 }
+
+//###########################
+extern "C" __declspec(dllexport)
+bool start_chat() {
+    return StartChat();
+}
+
+extern "C" __declspec(dllexport)
+void end_chat() {
+    EndChat();  // 메모리 캐시 정리
+}
+//###########################
 
 //프롬포트 빌딩계열 함수 =================================================================
 string PromptBuilder(string api, string plant_name) {
@@ -724,6 +763,9 @@ string PromptBuilder(string api, string plant_name) {
         // 센서 데이터 유효성 검사
         cout << "[DEBUG] 센서1 값: " << (int)sensorData.sensor1 << endl;
         cout << "[DEBUG] 센서2 값: " << (int)sensorData.sensor2 << endl;
+        cout << "[DEBUG] 센서3 값: " << (int)sensorData.sensor3 << endl;
+        cout << "[DEBUG] 센서4 값: " << (int)sensorData.sensor4 << endl;
+        cout << "[DEBUG] 급수 펌프 onoff 값: " << (bool)sensorData.onoff << endl;
 
         // 온도 (sensor1: 0-50℃를 0-255로 매핑)
         float temp = (sensorData.sensor1 / 255.0f) * 50.0f;
@@ -751,6 +793,42 @@ string PromptBuilder(string api, string plant_name) {
         }
         else {
             base_prompt += " → 습도가 적당해서 상쾌해요";
+        }
+
+        // 토양 습도 (sensor3: 0-100%를 0-255로 매핑)
+        float soilMoisture = (sensorData.sensor3 / 255.0f) * 100.0f;
+        base_prompt += "\n- 토양 습도: " + to_string(soilMoisture) + "%";
+
+        if (soilMoisture < 30.0f) {
+            base_prompt += " → 뿌리가 마르고 있어요. 물을 주세요!";
+        }
+        else if (soilMoisture > 75.0f) {
+            base_prompt += " → 물이 너무 많아서 뿌리가 숨을 못 쉬어요!";
+        }
+        else {
+            base_prompt += " → 토양 상태가 좋아요. 뿌리가 편해요.";
+        }
+
+        // 조도 (sensor4: 0-1000 lux를 0-255로 매핑)
+        float lightLux = (sensorData.sensor4 / 255.0f) * 1000.0f;
+        base_prompt += "\n- 조도: " + to_string(lightLux) + " lux";
+
+        if (lightLux < 200.0f) {
+            base_prompt += " → 너무 어두워요. 햇빛을 보고싶어요";
+        }
+        else if (lightLux > 800.0f) {
+            base_prompt += " → 햇빛이 너무 강해요. 잎이 탈 수도 있어요";
+        }
+        else {
+            base_prompt += " → 빛이 딱 좋아요! 광합성하기 좋아요";
+        }
+
+        // 급수 펌프 (onoff)
+        base_prompt += "\n- 급수 펌프: " + to_string(sensorData.onoff);
+        if(sensorData.onoff) {
+            base_prompt += "\n- 급수 펌프: 켜짐 → 시원하게 물이 들어오고 있어요. 목이 축여져서 기분이 좋아요.";
+        } else {
+            base_prompt += "\n- 급수 펌프: 꺼짐 → 물이 멈췄어요. 지금은 괜찮지만 나중에 또 줘요!";
         }
 
         // 감정 상태 추가 (평균 승인도 기반)
@@ -781,8 +859,6 @@ string PromptBuilder(string api, string plant_name) {
 
     return base_prompt;
 }
-
-//##########################################
 extern "C" __declspec(dllexport)
 const char* prompt_builder(const char* api, const char* plant_name) {
     static std::string result_str;
@@ -795,7 +871,8 @@ const char* prompt_builder(const char* api, const char* plant_name) {
         return result_str.c_str();
     }
 }
-//##########################################
+
+//get_binary_json##########################################
 extern "C" __declspec(dllexport)
 const char* get_binary_json(const char* api_key) {
     static std::string result_str;
@@ -820,8 +897,6 @@ const char* get_binary_json(const char* api_key) {
         return result_str.c_str();
     }
 }
-
-//##########################################
 
 
 int main(void) {
