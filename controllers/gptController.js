@@ -1,6 +1,7 @@
 const OpenAI = require("openai");
 const jwt = require("jsonwebtoken");
 const ffi = require("ffi-napi");
+const ref = require('ref-napi');
 const fs = require("fs");
 const path = require("path");
 const https = require('https');
@@ -10,12 +11,43 @@ const Plant = require("../db/plant");
 const Memory = require("../db/memory");
 const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
+const { json } = require("stream/consumers");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const getChatPage = () => "chat_gemini";
 
 const chatMemory = {};
+const api_key = process.env.OPENAI_API_KEY;
+const sensor_key = '1C3BFB6C';
+
+const postChatforDLL = async (req, res) => {
+  const userId = "user-gjscks";
+  let plant = await Plant.findOne({ uid: userId });
+
+  const lib = ffi.Library("./mymodule", {
+    gpt_json_string: ['string', ['string', 'string']],
+    analyze_text: ['string', ['string', 'string']],
+    prompt_builder:['string', ['string', 'string']],
+    get_binary_json:['string', ['string']]
+  });
+
+  // gpt_json_string
+  // const gpt_json_string_result = lib.gpt_json_string(loadPrompt({ nickname: plant.nickname || "애기장대" }), api_key);
+  // const responseObj = JSON.parse(gpt_json_string_result);
+  // const content = responseObj.choices?.[0]?.message?.content;
+
+  //analyze_text
+  // const analyze_text_result = lib.analyze_text(content, api_key);
+
+  //prompt_builder
+  // const prompt_builder_result = lib.prompt_builder(api_key, "응애장대");
+
+  //get_binary_json
+  const get_binary_json_result = JSON.parse(lib.get_binary_json(sensor_key));
+
+  res.json({ result: get_binary_json_result });
+};
 
 const postChat = async (req, res) => {
   const { message, week, status, apiKey } = req.body;
@@ -183,6 +215,7 @@ module.exports = {
   postChat,
   getChatLogsByUid,
   getPlantDataByUid,
+  postChatforDLL,
 };
 
 function getSensorValue(apiKey) {
