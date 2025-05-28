@@ -14,7 +14,7 @@ const diaryReplyDB = require("../db/diaryReply");
 const { json } = require("stream/consumers");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+'/generate_key'
 const getChatPage = () => "chat_gemini";
 
 const chatMemory = {};
@@ -22,16 +22,17 @@ const api_key = process.env.OPENAI_API_KEY;
 const sensor_key = '1C3BFB6C';
 
 const postChatforDLL = async (req, res) => {
-  const userId = "user-gjscks";
-  let plant = await Plant.findOne({ uid: userId });
 
   const lib = ffi.Library("./mymodule", {
     gpt_json_string: ['string', ['string', 'string']],
     analyze_text: ['string', ['string', 'string']],
     prompt_builder:['string', ['string', 'string']],
-    get_binary_json:['string', ['string']]
+    get_binary_json:['string', ['string']],
+    initialize_db: ["bool", []],
+    start_chat: ["bool",[]],
+    end_chat: ["void",[]],
+    add_nonsector_from_json: ["bool", ["string"]],
   });
-
   // gpt_json_string
   // const gpt_json_string_result = lib.gpt_json_string(loadPrompt({ nickname: plant.nickname || "애기장대" }), api_key);
   // const responseObj = JSON.parse(gpt_json_string_result);
@@ -44,16 +45,124 @@ const postChatforDLL = async (req, res) => {
   // const prompt_builder_result = lib.prompt_builder(api_key, "응애장대");
 
   //get_binary_json
-  const get_binary_json_result = JSON.parse(lib.get_binary_json(sensor_key));
+  // const get_binary_json_result = JSON.parse(lib.get_binary_json(sensor_key));
 
-  res.json({ result: get_binary_json_result });
+  //initialize_db
+  // const result = lib.initialize_db();
+  // console.log("DB 초기화 성공:", result);
+  
+  //nonsector
+  // const answer = {
+  //   id: 0,
+  //   chat_id: "chat123",
+  //   role: "user",
+  //   content: "오늘 날씨 어때?",
+  //   timestamp: Math.floor(Date.now() / 1000),
+  //   key1: "날씨",
+  //   key2: "기분",
+  //   key3: "대화"
+  // };
+  // const success = lib.add_nonsector_from_json(JSON.stringify(answer));
+
+  const { message, week, status, apiKey } = req.body;
+  const userId = "user-test";
+
+  if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
+  
+  let plant = await Plant.findOne({ uid: userId });
+  if (!plant) {
+    plant = new Plant({ uid: userId,
+      nickname: "애기장대",
+      plant_kind: "애기장대",
+      temperature_data: [],
+      humidity_data: [],
+      soil_moisture_data: [],
+      light_data: [],
+      led_power: 0,
+      led_onoff: false,
+      growth_data: 0,
+      sensor_key: "1C3BFB6C"
+    });
+  }
+
+  const data = JSON.parse(lib.get_binary_json(plant.sensor_key));
+  const now = new Date();
+  const createdAt = new Date(plant.createdAt);
+  const diffMs = now - createdAt;
+  const plant_week = Math.floor(diffMs*1000000000 / (1000 * 60 * 60 * 24 * 7));
+  if(plant_week == null) plant_week = 1;
+
+  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
+  if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
+  if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
+  if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
+  if (data.led !== undefined) plant.led_power = data.led;
+  if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+  // plant.growth_data = plant_week;
+  await plant.save();
+  
+
+
+  // const fullMessage = `
+  // 사용자 메세지 : ${message}\n
+  // 온도: ${plant.temperature_data || "정보 없음"}°C, 
+  // 습도: ${plant.humidity_data || "정보 없음"}%, 
+  // 토지 습도: ${plant.soil_moisture_data || "정보 없음"}%, 
+  // 조도: ${plant.light_data || "정보 없음"},
+  // 식물등 상태: ${plant.led_onoff || "정보 없음"},
+  // 식물등 파워: ${plant.led_power || "정보 없음"},
+  // 생애주기: ${plant_week || 1}주차, 
+  // 상태: ${status || "정보 없음"}`;
+
+  if (!chatMemory[userId]) {
+    const mems = await Memory.find({ uid: userId }).sort({ createdAt: 1 }).lean();
+    chatMemory[userId] = mems.map(m => ({ role: m.role, content: m.content }));
+  }
+
+  const MAX_RECENT = 30;
+  let summary = "";
+
+  if (chatMemory[userId].length > 100 && chatMemory[userId].length % 20 === 0) {
+    const oldHistory = chatMemory[userId].slice(0, -MAX_RECENT);
+    const previousSummary = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+
+    const summaryResponse = await openai.chat.completions.create({
+      model: "gpt-4.1-nano-2025-04-14",
+      messages: [
+        { role: "system", content: "다음 사용자-어시스턴트 대화를 요약해줘. 핵심만 간결하게 서술해줘." },
+        ...oldHistory
+      ],
+      max_tokens: 300,
+    });
+
+    summary = summaryResponse.choices?.[0]?.message?.content || "";
+    if (summary) {
+      await Summary.create({ uid: userId, content: summary });
+    }
+  } else {
+    const existing = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+    summary = existing?.content || "";
+  }
+
+  const prompt_builder_result = lib.prompt_builder(plant.sensor_key, "응애장대");
+  const fullMessage = `
+  ${prompt_builder_result}\n
+  사용자 메세지 : ${message}\n;
+  `
+  
+  const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
+  const responseObj = JSON.parse(gpt_json_string_result);
+  const content = responseObj.choices?.[0]?.message?.content;
+  
+  res.json({ response: content });
 };
+
 
 const postChat = async (req, res) => {
   const { message, week, status, apiKey } = req.body;
-  const { token } = req.cookies;
+  // const { token } = req.cookies;
   // const userId = jwt.verify(token, process.env.JWT_SECRET).uid;
-  const userId = "user-gjscks";
+  const userId = "user-test";
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
