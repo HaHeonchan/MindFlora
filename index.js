@@ -47,10 +47,3 @@ app.use("/api", require("./routes/ttsRoutes.js"))
 app.listen(port, () => {
   console.log(`App listening on port ${port}`);
 });
-
-app.get("/test", (req, res) => {
-  const locals = {
-    title: "Test",
-  };
-  res.render("test", { locals, layout: mainLayout });
-});

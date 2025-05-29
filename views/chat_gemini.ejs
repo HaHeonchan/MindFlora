@@ -7,6 +7,7 @@
   <input type="number" id="humidity" placeholder="습도 (%)" />
   <input type="number" id="week" placeholder="생애주기 주차" />
   <input type="text" id="status" placeholder="상태를 입력하세요" />
+  <input type="text" id="apiKey" placeholder="apiKey를 입력하세요" />
   <input type="text" id="message" placeholder="메시지를 입력하세요" />
   <button onclick="sendMessage()">전송</button>
 </div>
@@ -25,6 +26,7 @@
     const humidity = document.getElementById("humidity").value;
     const week = document.getElementById("week").value;
     const chatBox = document.getElementById("chat-box");
+    const apiKey = document.getElementById("apiKey").value;
 
     if (!message) {
       alert("메시지를 입력하세요!");
@@ -42,6 +44,7 @@
         humidity,
         week,
         status,
+        apiKey,
         userId
       }),
     });

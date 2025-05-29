@@ -17,13 +17,26 @@ const getChatPage = () => {
 
 // POST 요청 처리 (대화)
 const postChat = async (req, res) => {
-  const { message, temp, humidity, week, status } = req.body;
+  const { message, temp, humidity, week, status, apiKey } = req.body;
   const { token } = req.cookies;
   const userId = jwt.verify(token, process.env.JWT_SECRET).uid;
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
   if (!userId) return res.status(400).json({ error: "userId가 필요합니다." });
+  
 
+  if(apiKey) {
+    try {
+      const data = await getSensorData(apiKey);
+      console.log("센서 데이터:", data.sensors);
+      console.log("전원 상태:", data.onoff);
+      console.log("LED 값:", data.led);
+    } catch (err) {
+      console.error("데이터 요청 중 오류:", err);
+    }
+  }
+
+  
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
     // 처음 생성
@@ -150,3 +163,51 @@ const getPlantDataByUid = async (req, res) => {
 };
 
 module.exports = { getChatPage, postChat, getChatLogsByUid, getPlantDataByUid };
+
+function getSensorData(apiKey) {
+  const URL = `https://blackwhite12.pythonanywhere.com/get_binary/${apiKey}`;
+
+  return new Promise((resolve, reject) => {
+    https.get(URL, (response) => {
+      const chunks = [];
+
+      response.on("data", (chunk) => chunks.push(chunk));
+
+      response.on("end", () => {
+        const buffer = Buffer.concat(chunks);
+
+        let offset = 0;
+        const parsedData = {};
+
+        while (offset < buffer.length) {
+          const key = buffer.slice(offset, offset + 8).toString();
+          const type = buffer[offset + 8];
+          const len = buffer[offset + 9];
+          const value = buffer.slice(offset + 10, offset + 10 + len);
+
+          switch (type) {
+            case 0x01:
+              parsedData.sensors = [...value];
+              break;
+            case 0x02:
+              parsedData.onoff = value.toString();
+              break;
+            case 0x03:
+              parsedData.led = value[0];
+              break;
+          }
+
+          offset += 8 + 1 + 1 + len;
+        }
+
+        resolve(parsedData);
+      });
+
+      response.on("error", (err) => {
+        reject(new Error("응답 처리 중 오류: " + err.message));
+      });
+    }).on("error", (err) => {
+      reject(new Error("요청 실패: " + err.message));
+    });
+  });
+}
