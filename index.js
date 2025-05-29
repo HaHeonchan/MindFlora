@@ -41,6 +41,8 @@ app.use("/", require("./routes/geminiRoutes"));
 app.use("/", require("./routes/startRoutes"));
 app.use("/diary", require("./routes/diaryRoutes.js"))
 app.use("/user", require("./routes/mypageRoutes.js"))
+app.use("/test", require("./routes/testRoutes.js"))
+app.use("/api", require("./routes/ttsRoutes.js"))
 
 app.listen(port, () => {
   console.log(`App listening on port ${port}`);
