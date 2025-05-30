@@ -19,20 +19,24 @@ const getChatPage = () => "chat_gemini";
 
 const chatMemory = {};
 const api_key = process.env.OPENAI_API_KEY;
-const sensor_key = '1C3BFB6C';
+const test_sensor_key = '1C3BFB6C';
+
+const result = lib.initialize_db();
+
+//DLL 라이브러리 함수 불러오기
+const lib = ffi.Library("./mymodule", {
+  gpt_json_string: ['string', ['string', 'string']],
+  analyze_text: ['string', ['string', 'string']],
+  prompt_builder: ['string', ['string', 'string']],
+  get_binary_json: ['string', ['string']],
+  initialize_db: ["bool", []],
+  start_chat: ["bool", []],
+  end_chat: ["void", []],
+  add_nonsector_from_json: ["bool", ["string"]],
+  post_binary_c: ["void", ["string", "uint8", "uint8", "uint8", "uint8"]],
+});
 
 const postChatforDLL = async (req, res) => {
-
-  const lib = ffi.Library("./mymodule", {
-    gpt_json_string: ['string', ['string', 'string']],
-    analyze_text: ['string', ['string', 'string']],
-    prompt_builder:['string', ['string', 'string']],
-    get_binary_json:['string', ['string']],
-    initialize_db: ["bool", []],
-    start_chat: ["bool",[]],
-    end_chat: ["void",[]],
-    add_nonsector_from_json: ["bool", ["string"]],
-  });
   // gpt_json_string
   // const gpt_json_string_result = lib.gpt_json_string(loadPrompt({ nickname: plant.nickname || "애기장대" }), api_key);
   // const responseObj = JSON.parse(gpt_json_string_result);
@@ -50,7 +54,7 @@ const postChatforDLL = async (req, res) => {
   //initialize_db
   // const result = lib.initialize_db();
   // console.log("DB 초기화 성공:", result);
-  
+
   //nonsector
   // const answer = {
   //   id: 0,
@@ -65,13 +69,24 @@ const postChatforDLL = async (req, res) => {
   // const success = lib.add_nonsector_from_json(JSON.stringify(answer));
 
   const { message, week, status, apiKey } = req.body;
-  const userId = "user-test";
+  const { token } = req.cookies;
+  
+  let userId = "user-test"; // 기본값 설정
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded && decoded.uid) {
+      userId = decoded.uid;
+    }
+  } catch (err) {
+    console.warn("JWT 검증 실패, 테스트 아이디 사용:", err.message);
+  }
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
-  
+
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
-    plant = new Plant({ uid: userId,
+    plant = new Plant({
+      uid: userId,
       nickname: "애기장대",
       plant_kind: "애기장대",
       temperature_data: [],
@@ -89,8 +104,8 @@ const postChatforDLL = async (req, res) => {
   const now = new Date();
   const createdAt = new Date(plant.createdAt);
   const diffMs = now - createdAt;
-  const plant_week = Math.floor(diffMs*1000000000 / (1000 * 60 * 60 * 24 * 7));
-  if(plant_week == null) plant_week = 1;
+  const plant_week = Math.floor(diffMs * 1000000000 / (1000 * 60 * 60 * 24 * 7));
+  if (plant_week == null) plant_week = 1;
 
   if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
   if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
@@ -100,8 +115,6 @@ const postChatforDLL = async (req, res) => {
   if (data.onoff !== undefined) plant.led_onoff = data.onoff;
   // plant.growth_data = plant_week;
   await plant.save();
-  
-
 
   // const fullMessage = `
   // 사용자 메세지 : ${message}\n
@@ -149,14 +162,33 @@ const postChatforDLL = async (req, res) => {
   ${prompt_builder_result}\n
   사용자 메세지 : ${message}\n;
   `
-  
+
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
-  
+
   const analyze_text_result = JSON.parse(lib.analyze_text(content, api_key));
 
   res.json({ response: content, prompt: fullMessage, analyze: analyze_text_result });
+};
+
+const getBinary = async (req, res) => {
+  const sensorKey = req.body?.sensorKey || test_sensor_key;
+  if(sensorKey == test_sensor_key){
+    console.log("테스트 API 키를 사용합니다.")
+  };
+  const test = JSON.parse(lib.get_binary_json(sensorKey));
+  res.json({ test });
+};
+
+const postBinary = async (req, res) => {
+  const sensorKey = req.body?.sensorKey || test_sensor_key;
+  if(sensorKey == test_sensor_key){
+    console.log("테스트 API 키를 사용합니다.")
+  };
+  lib.post_binary_c(sensorKey, (25/50)*255.0, (50/100)*255.0, (50/100)*255.0, (500/1000)*255.0);
+  const test = JSON.parse(lib.get_binary_json(sensorKey));
+  res.json({ test });
 };
 
 
@@ -179,7 +211,7 @@ const postChat = async (req, res) => {
     humidity = data.sensors[1];
     soilMoisture = data.sensors[2];
     light = data.sensors[3];
-    
+
     console.log("전원 상태:", data.onoff);
     ledOn = data.onoff;
     console.log("LED 값:", data.led);
@@ -190,9 +222,11 @@ const postChat = async (req, res) => {
 
   let plant = await Plant.findOne({ uid: userId });
   if (!plant) {
-    plant = new Plant({ uid: userId, nickname: "애기장대", plant_kind: "애기장대",
+    plant = new Plant({
+      uid: userId, nickname: "애기장대", plant_kind: "애기장대",
       temperature_data: temp ? [temp] : [], humidity_data: humidity ? [humidity] : [],
-      water_data: [null], light_data: [null], acidity_data: [null], growth_data: week ? [week] : [] });
+      water_data: [null], light_data: [null], acidity_data: [null], growth_data: week ? [week] : []
+    });
   } else {
     if (humidity !== undefined) plant.humidity_data.push(humidity);
     if (temp !== undefined) plant.temperature_data.push(temp);
@@ -327,6 +361,8 @@ module.exports = {
   getChatLogsByUid,
   getPlantDataByUid,
   postChatforDLL,
+  getBinary,
+  postBinary,
 };
 
 function getSensorValue(apiKey) {

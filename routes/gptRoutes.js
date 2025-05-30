@@ -15,6 +15,10 @@ router
 
 router.get("/chat/logs", gptController.getChatLogsByUid);
 router.get("/plant/:uid", gptController.getPlantDataByUid);
+
 router.post("/chat/dll", gptController.postChatforDLL);
+router
+  .get("/sensor", gptController.getBinary)
+  .post("/sensor", gptController.postBinary);
 
 module.exports = router;

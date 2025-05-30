@@ -41,6 +41,8 @@ void post_binary(const string& api_key, uint8_t sensor1, uint8_t sensor2, uint8_
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.data());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post_data.size());
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); //인증서 추가가
+
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)

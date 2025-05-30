@@ -244,9 +244,12 @@ json gpt(const string& prompt, const string& api_key) {
         headers = curl_slist_append(headers, "Content-Type: application/json; charset=UTF-8");
         headers = curl_slist_append(headers, ("Authorization: Bearer " + api_key).c_str());
 
+        //모델 설정
+        string model = "gpt-4.1-nano-2025-04-14";
+
         // API 요청 본문 구성
         json request_body = {
-            {"model", "gpt-4.1"},
+            {"model", model},
             {"messages", json::array({
                 {
                     {"role", "user"},
@@ -351,7 +354,7 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
                 "- valence: 0 ~ 2 사이의 실수\n"
                 "- arousal: 0 ~ 1 사이의 실수\n"
                 "- impressiveness: 0 ~ 1 사이의 실수\n"
-                "- water_pump: 물을 틀겠다고 한 경우 true, 아닐경우 false\n"
+                "- water_pump: 물을 마시교 있는 경우, 혹은 펌프를 킬 경우 true, 펌프를 끄거나 물을 그만 마실 경우 false\n"
                 "분석할 텍스트: " + utf8_text;
 
             // 나머지 코드는 동일
@@ -663,24 +666,21 @@ bool StartChat() {
     ChatCache* cache = ChatCache::getInstance();
     return cache->InitializeCache();
 }
+extern "C" __declspec(dllexport)
+bool start_chat() {
+    return StartChat();
+}
 
 // 대화 종료 시 호출할 함수
 void EndChat() {
     ChatCache* cache = ChatCache::getInstance();
     cache->ClearCache();
 }
-
-//###########################
-extern "C" __declspec(dllexport)
-bool start_chat() {
-    return StartChat();
-}
-
 extern "C" __declspec(dllexport)
 void end_chat() {
     EndChat();  // 메모리 캐시 정리
 }
-//###########################
+
 
 //프롬포트 빌딩계열 함수 =================================================================
 string PromptBuilder(string api, string plant_name) {
@@ -688,7 +688,7 @@ string PromptBuilder(string api, string plant_name) {
     string base_prompt = "";
 
     // 1. 기본 페르소나 프롬프트
-	base_prompt = "너의 이름은" + plant_name + "당신은 지금 친한 친구와 대화하고 있다. 200자 이하로 감성적으로 답장하라";
+	base_prompt = "너의 이름은 " + plant_name + ". 당신은 지금 친한 친구와 대화하고 있다. 200자 이하로 감성적으로 답장하라";
 
     // 2. 기억 통합 - 디버깅 정보 추가
     cout << "[DEBUG] NonSector 개수: " << cache->memory.nonSector.size() << endl;
@@ -895,6 +895,20 @@ const char* get_binary_json(const char* api_key) {
     } catch (const std::exception& e) {
         result_str = R"({"error":")" + std::string(e.what()) + R"("})";
         return result_str.c_str();
+    }
+}
+
+extern "C" __declspec(dllexport)
+void post_binary_c(const char* api_key, uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4) {
+    if (!api_key || strlen(api_key) == 0) {
+        cerr << "[ERROR] API 키가 비어 있습니다." << endl;
+        return;
+    }
+
+    try {
+        post_binary(string(api_key), s1, s2, s3, s4);
+    } catch (const exception& e) {
+        cerr << "[ERROR] post_binary_c 예외: " << e.what() << endl;
     }
 }
 
