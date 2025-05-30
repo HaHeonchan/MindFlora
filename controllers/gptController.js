@@ -11,6 +11,7 @@ const Plant = require("../db/plant");
 const Memory = require("../db/memory");
 const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
+const LongTermMemory = require("../db/longTermMemory");
 const { json } = require("stream/consumers");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -20,8 +21,6 @@ const getChatPage = () => "chat_gemini";
 const chatMemory = {};
 const api_key = process.env.OPENAI_API_KEY;
 const test_sensor_key = '1C3BFB6C';
-
-const result = lib.initialize_db();
 
 //DLL 라이브러리 함수 불러오기
 const lib = ffi.Library("./mymodule", {
@@ -68,10 +67,12 @@ const postChatforDLL = async (req, res) => {
   // };
   // const success = lib.add_nonsector_from_json(JSON.stringify(answer));
 
-  const { message, week, status, apiKey } = req.body;
+  const { message, apiKey, name } = req.body;
   const { token } = req.cookies;
-  
+
   let userId = "user-test"; // 기본값 설정
+  const username = name || "홍길동";
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded && decoded.uid) {
@@ -116,65 +117,104 @@ const postChatforDLL = async (req, res) => {
   // plant.growth_data = plant_week;
   await plant.save();
 
-  // const fullMessage = `
-  // 사용자 메세지 : ${message}\n
-  // 온도: ${plant.temperature_data || "정보 없음"}°C, 
-  // 습도: ${plant.humidity_data || "정보 없음"}%, 
-  // 토지 습도: ${plant.soil_moisture_data || "정보 없음"}%, 
-  // 조도: ${plant.light_data || "정보 없음"},
-  // 식물등 상태: ${plant.led_onoff || "정보 없음"},
-  // 식물등 파워: ${plant.led_power || "정보 없음"},
-  // 생애주기: ${plant_week || 1}주차, 
-  // 상태: ${status || "정보 없음"}`;
+  //사용자 메세지 분석
+  const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
+
+
 
   if (!chatMemory[userId]) {
     const mems = await Memory.find({ uid: userId }).sort({ createdAt: 1 }).lean();
     chatMemory[userId] = mems.map(m => ({ role: m.role, content: m.content }));
   }
 
-  const MAX_RECENT = 30;
+  const MAX_RECENT = 20;
   let summary = "";
 
-  if (chatMemory[userId].length > 100 && chatMemory[userId].length % 20 === 0) {
-    const oldHistory = chatMemory[userId].slice(0, -MAX_RECENT);
-    const previousSummary = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+  // if (chatMemory[userId].length > 100 && chatMemory[userId].length % 20 === 0) {
+  //   const oldHistory = chatMemory[userId].slice(0, -MAX_RECENT);
+  //   const previousSummary = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
 
-    const summaryResponse = await openai.chat.completions.create({
-      model: "gpt-4.1-nano-2025-04-14",
-      messages: [
-        { role: "system", content: "다음 사용자-어시스턴트 대화를 요약해줘. 핵심만 간결하게 서술해줘." },
-        ...oldHistory
-      ],
-      max_tokens: 300,
-    });
+  //   const summaryResponse = await openai.chat.completions.create({
+  //     model: "gpt-4.1-nano-2025-04-14",
+  //     messages: [
+  //       { role: "system", content: "다음 사용자-어시스턴트 대화를 요약해줘. 핵심만 간결하게 서술해줘." },
+  //       ...oldHistory
+  //     ],
+  //     max_tokens: 300,
+  //   });
 
-    summary = summaryResponse.choices?.[0]?.message?.content || "";
-    if (summary) {
-      await Summary.create({ uid: userId, content: summary });
-    }
-  } else {
-    const existing = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
-    summary = existing?.content || "";
+  //   summary = summaryResponse.choices?.[0]?.message?.content || "";
+  //   if (summary) {
+  //     await Summary.create({ uid: userId, content: summary });
+  //   }
+  // } else {
+  //   const existing = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+  //   summary = existing?.content || "";
+  // }
+
+  const recentHistory = chatMemory[userId].slice(MAX_RECENT);
+
+  //장기&영구 기억 로드
+  const memoryDoc = await LongTermMemory.findOne({ uid: userId });
+  let sector = "";
+  let endless = "";
+
+  // 장기 기억 문자열 구성
+  if (memoryDoc && memoryDoc.sector.length > 0) {
+    sector = memoryDoc.sector.map(mem => {
+      return `- [${mem.role}] ${mem.text} (인상도: ${mem.approval})`;
+    }).join('\n');
+  }
+
+  // 영구 기억 문자열 구성
+  if (memoryDoc && memoryDoc.endless.length > 0) {
+    endless = memoryDoc.endless.map(mem => {
+      return `- [${mem.role}] ${mem.text} (인상도: ${mem.approval})`;
+    }).join('\n');
   }
 
   const prompt_builder_result = lib.prompt_builder(plant.sensor_key, "응애장대");
-  const fullMessage = `
-  ${prompt_builder_result}\n
-  사용자 메세지 : ${message}\n;
+  const fullMessage =
   `
+    ${prompt_builder_result}
 
+    최근 대화 내역: ${recentHistory}
+
+    친구 이름 : ${username}
+
+    친구 메세지: ${message}
+
+    인상깊었던 대화 기록:
+    ${sector}
+
+    잊지 못할 순간의 대화 기록:
+    ${endless}
+  `;
+
+  //gpt 호출출
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
 
-  const analyze_text_result = JSON.parse(lib.analyze_text(content, api_key));
+  const analyze_text_result_ai = JSON.parse(lib.analyze_text(content, api_key));
 
-  res.json({ response: content, prompt: fullMessage, analyze: analyze_text_result });
+  //전체 기억 저장장
+  const memoryDocs = [
+    { uid: userId, role: "user", content: message },
+    { uid: userId, role: "assistant", content: content },
+  ];
+  await Memory.insertMany(memoryDocs);
+  chatMemory[userId].push(...memoryDocs.map(({ role, content }) => ({ role, content })));
+
+  //장기기억 갱신
+  memorize(userId, analyze_text_result_user, analyze_text_result_ai, message, content)
+
+  res.json({ response: content, prompt: fullMessage, analyzeUser: analyze_text_result_user, analyzeAi: analyze_text_result_ai });
 };
 
 const getBinary = async (req, res) => {
   const sensorKey = req.body?.sensorKey || test_sensor_key;
-  if(sensorKey == test_sensor_key){
+  if (sensorKey == test_sensor_key) {
     console.log("테스트 API 키를 사용합니다.")
   };
   const test = JSON.parse(lib.get_binary_json(sensorKey));
@@ -183,10 +223,10 @@ const getBinary = async (req, res) => {
 
 const postBinary = async (req, res) => {
   const sensorKey = req.body?.sensorKey || test_sensor_key;
-  if(sensorKey == test_sensor_key){
+  if (sensorKey == test_sensor_key) {
     console.log("테스트 API 키를 사용합니다.")
   };
-  lib.post_binary_c(sensorKey, (25/50)*255.0, (50/100)*255.0, (50/100)*255.0, (500/1000)*255.0);
+  lib.post_binary_c(sensorKey, (25 / 50) * 255.0, (50 / 100) * 255.0, (50 / 100) * 255.0, (500 / 1000) * 255.0);
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
@@ -406,4 +446,72 @@ function getSensorValue(apiKey) {
       response.on("error", (err) => reject(err));
     }).on("error", (err) => reject(err));
   });
+}
+
+function memorize(uid, newUserMemory, newAiMemory, user_content, ai_content) {
+  const user = {
+    role: "user", // 또는 "assistant" 등 실제 상황에 맞게 지정
+    text: user_content, // 사용자가 분석한 원문 텍스트
+    key1: newUserMemory.keywords[0] || "",
+    key2: newUserMemory.keywords[1] || "",
+    key3: newUserMemory.keywords[2] || "",
+    approval: newUserMemory.impression || 0,
+    timestamp: Date.now(),
+  };
+
+  const assistant = {
+    role: "assistant", // 또는 "assistant" 등 실제 상황에 맞게 지정
+    text: ai_content, // 사용자가 분석한 원문 텍스트
+    key1: newAiMemory.keywords[0] || "",
+    key2: newAiMemory.keywords[1] || "",
+    key3: newAiMemory.keywords[2] || "",
+    approval: newAiMemory.impression || 0,
+    timestamp: Date.now(),
+  };
+
+  if (user.approval >= 9) {
+    addToEndlessMemory(uid, user)
+  } else if (user.approval >= 3) {
+    addToSectorMemory(uid, user)
+  }
+
+  if (assistant.approval >= 9) {
+    addToEndlessMemory(uid, assistant)
+  } else if (assistant.approval >= 3) {
+    addToSectorMemory(uid, assistant)
+  }
+};
+
+// 장기 기억 추가 (최대 10개)
+async function addToSectorMemory(uid, newMemory) {
+  await LongTermMemory.findOneAndUpdate(
+    { uid },
+    {
+      $push: {
+        sector: {
+          $each: [newMemory],
+          $slice: -10 // 최신 10개만 유지
+        }
+      }
+    },
+    { upsert: true, new: true }
+  );
+  console.log("장기기억 갱신!");
+}
+
+// 영구 기억 추가 (최대 5개)
+async function addToEndlessMemory(uid, newMemory) {
+  await LongTermMemory.findOneAndUpdate(
+    { uid },
+    {
+      $push: {
+        endless: {
+          $each: [newMemory],
+          $slice: -5 // 최신 5개만 유지
+        }
+      }
+    },
+    { upsert: true, new: true }
+  );
+  console.log("영구기억 갱신!");
 }
