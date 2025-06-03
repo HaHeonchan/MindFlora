@@ -877,10 +877,11 @@ const char* prompt_builder(const char* api, const char* plant_name) {
 
 //get_binary_json##########################################
 DLL_EXPORT
-extern "C" DLL_EXPORT char* get_binary_json(const char* api_key) {
+const char* get_binary_json(const char* api_key) {
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
 
+        // 구조체를 JSON으로 변환
         json j = {
             {"sensor1", pkt.sensor1},
             {"sensor2", pkt.sensor2},
@@ -890,18 +891,21 @@ extern "C" DLL_EXPORT char* get_binary_json(const char* api_key) {
             {"led", pkt.led}
         };
 
-        std::string result = j.dump();
-        char* result_cstr = (char*)malloc(result.size() + 1);
-        if (result_cstr == nullptr) return nullptr;
-        std::strcpy(result_cstr, result.c_str());
-        return result_cstr;
+        std::string jsonStr = j.dump();
 
+        // 동적 메모리 할당 후 문자열 복사
+        char* buffer = (char*)malloc(jsonStr.size() + 1);
+        if (!buffer) return "{\"error\":\"memory allocation failed\"}";
+
+        strcpy(buffer, jsonStr.c_str());
+        return buffer;
     } catch (const std::exception& e) {
-        std::string err = std::string(R"({"error":")") + e.what() + R"("})";
-        char* err_cstr = (char*)malloc(err.size() + 1);
-        if (err_cstr == nullptr) return nullptr;
-        std::strcpy(err_cstr, err.c_str());
-        return err_cstr;
+        std::string errStr = std::string("{\"error\":\"") + e.what() + "\"}";
+        char* buffer = (char*)malloc(errStr.size() + 1);
+        if (!buffer) return "{\"error\":\"memory allocation failed\"}";
+
+        strcpy(buffer, errStr.c_str());
+        return buffer;
     }
 }
 
