@@ -1,2 +1,4 @@
 .env
 node_modules
+mymodule.so
+mymodule.dll
