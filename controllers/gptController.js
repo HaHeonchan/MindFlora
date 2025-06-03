@@ -5,6 +5,7 @@ const ref = require('ref-napi');
 const fs = require("fs");
 const path = require("path");
 const https = require('https');
+const os = require("os");
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
@@ -22,31 +23,25 @@ const chatMemory = {};
 const api_key = process.env.OPENAI_API_KEY;
 const test_sensor_key = '1C3BFB6C';
 
-
-
 let lib = null;
 
 try {
-  const libPath = process.platform === 'win32'
-    ? './mymodule.dll'
-    : './mymodule.so';
+  const isLinux = os.platform() === "linux";
+  const libPath = isLinux ? "./mymodule.so" : "./mymodule.dll";
 
   lib = ffi.Library(libPath, {
     gpt_json_string: ['string', ['string', 'string']],
     analyze_text: ['string', ['string', 'string']],
     prompt_builder: ['string', ['string', 'string']],
     get_binary_json: ['string', ['string']],
-    initialize_db: ['bool', []],
-    start_chat: ['bool', []],
-    end_chat: ['void', []],
-    add_nonsector_from_json: ['bool', ['string']],
-    post_binary_c: ['void', ['string', 'uint8', 'uint8', 'uint8', 'uint8']],
+    initialize_db: ["bool", []],
+    start_chat: ["bool", []],
+    end_chat: ["void", []],
+    add_nonsector_from_json: ["bool", ["string"]],
+    post_binary_c: ["void", ["string", "uint8", "uint8", "uint8", "uint8"]],
   });
-
-  console.log(`✅ FFI 모듈 로딩 성공: ${libPath}`);
 } catch (err) {
-  console.warn("❌ FFI 모듈 로딩 실패:", err.message);
-  lib = null;
+  console.error("❌ FFI 모듈 로딩 실패:", err.message);
 }
 
 const postChatforDLL = async (req, res) => {
