@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <vector>
+#include <cstring>
 #include "sqlite3.h"
 #include <curl/curl.h>
 #include <ctime>
@@ -593,8 +594,7 @@ void NonSector(const Answer& newAnswer) {
     // 실시간 DB 저장 유지
     SaveAnswerToDB(newAnswer, "nonsector");
 }
-DLL_EXPORT
-bool add_nonsector_from_json(const char* json_str) {
+extern "C" DLL_EXPORT bool add_nonsector_from_json(const char* json_str) {
     static std::string err_msg;
 
     try {
@@ -878,12 +878,10 @@ const char* prompt_builder(const char* api, const char* plant_name) {
 //get_binary_json##########################################
 DLL_EXPORT
 const char* get_binary_json(const char* api_key) {
-    static std::string result_str;
-
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
 
-        // 구조체를 JSON으로 변환
+        // JSON으로 변환
         json j = {
             {"sensor1", pkt.sensor1},
             {"sensor2", pkt.sensor2},
@@ -893,11 +891,11 @@ const char* get_binary_json(const char* api_key) {
             {"led", pkt.led}
         };
 
-        result_str = j.dump();
-        return result_str.c_str();
+        std::string result_str = j.dump();
+        return strdup(result_str.c_str());  // ✅ 안전하게 복사된 포인터 반환
     } catch (const std::exception& e) {
-        result_str = R"({"error":")" + std::string(e.what()) + R"("})";
-        return result_str.c_str();
+        std::string error_str = R"({"error":")" + std::string(e.what()) + R"("})";
+        return strdup(error_str.c_str());  // ✅ 마찬가지로 복사해서 반환
     }
 }
 
