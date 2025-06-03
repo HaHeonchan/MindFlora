@@ -916,6 +916,10 @@ const char* get_binary_json(const char* api_key) {
     }
 }
 
+DLL_EXPORT void free_binary_json(const char* ptr) {
+    free((void*)ptr);
+}
+
 // Node.js에서 호출 가능
 DLL_EXPORT void free_string(const char* ptr) {
     if (ptr) free((void*)ptr);

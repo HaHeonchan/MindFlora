@@ -40,6 +40,7 @@ try {
     add_nonsector_from_json: ["bool", ["string"]],
     post_binary_c: ["void", ["string", "uint8", "uint8", "uint8", "uint8"]],
     free_string: ["void", ["string"]],
+    free_binary_json: ["void", ["string"]],
   });
 } catch (err) {
   console.error("❌ FFI 모듈 로딩 실패:", err.message);
@@ -252,7 +253,12 @@ const getBinary = async (req, res) => {
     console.log("테스트 API 키를 사용합니다.")
   };
   console.log("get_binary_json 실행");
-  const test = JSON.parse(lib.get_binary_json(sensorKey));
+  const strPtr = lib.get_binary_json(sensorKey);
+  const json = ref.readCString(strPtr);
+  console.log("free_binary_json 실행");
+  lib.free_binary_json(strPtr);
+  
+  const test = JSON.parse(json);
   res.json({ test });
 };
 
