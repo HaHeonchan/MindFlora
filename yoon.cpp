@@ -10,7 +10,10 @@
 #include <numeric>
 #include <locale>
 #ifdef _WIN32
-#include <windows.h>
+  #define DLL_EXPORT extern "C" __declspec(dllexport)
+  #include <windows.h>
+#else
+  #define DLL_EXPORT extern "C"
 #endif
 
 using json = nlohmann::json;
@@ -177,7 +180,7 @@ bool InitializeDB() {
 
     return true;
 }
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 bool initialize_db() {
     return InitializeDB();
 }
@@ -227,7 +230,7 @@ bool SaveSpaceToDB(const string& summary) {
     return success;
 }
 
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 const char* test() {
     return "Hello asshole!";
 }
@@ -295,7 +298,7 @@ json gpt(const string& prompt, const string& api_key) {
 }
 
 // node.js에서 사용할 GPT 호출 메인함수 ################################
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 const char* gpt_json_string(const char* prompt, const char* api_key) {
     static std::string result_str;
     json result = gpt(std::string(prompt), std::string(api_key));
@@ -396,7 +399,7 @@ TextAnalysisResult TextAnalysis(const string& text, string api_key) {
 }
 
 // node.js에서 사용할 감정분석 함수 ################################
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 const char* analyze_text(const char* input, const char* api_key) {
     static std::string result_json;
 
@@ -590,7 +593,7 @@ void NonSector(const Answer& newAnswer) {
     // 실시간 DB 저장 유지
     SaveAnswerToDB(newAnswer, "nonsector");
 }
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 bool add_nonsector_from_json(const char* json_str) {
     static std::string err_msg;
 
@@ -666,7 +669,7 @@ bool StartChat() {
     ChatCache* cache = ChatCache::getInstance();
     return cache->InitializeCache();
 }
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 bool start_chat() {
     return StartChat();
 }
@@ -676,7 +679,7 @@ void EndChat() {
     ChatCache* cache = ChatCache::getInstance();
     cache->ClearCache();
 }
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 void end_chat() {
     EndChat();  // 메모리 캐시 정리
 }
@@ -859,7 +862,7 @@ string PromptBuilder(string api, string plant_name) {
 
     return base_prompt;
 }
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 const char* prompt_builder(const char* api, const char* plant_name) {
     static std::string result_str;
 
@@ -873,7 +876,7 @@ const char* prompt_builder(const char* api, const char* plant_name) {
 }
 
 //get_binary_json##########################################
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 const char* get_binary_json(const char* api_key) {
     static std::string result_str;
 
@@ -898,7 +901,7 @@ const char* get_binary_json(const char* api_key) {
     }
 }
 
-extern "C" __declspec(dllexport)
+DLL_EXPORT
 void post_binary_c(const char* api_key, uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4) {
     if (!api_key || strlen(api_key) == 0) {
         cerr << "[ERROR] API 키가 비어 있습니다." << endl;
