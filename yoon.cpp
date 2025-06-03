@@ -876,9 +876,26 @@ const char* prompt_builder(const char* api, const char* plant_name) {
     }
 }
 
-DLL_EXPORT const char* get_binary_json(const char* api_key) {
+DLL_EXPORT
+const char* get_binary_json(const char* api_key) {
+    // thread-safe 정적 문자열 버퍼 사용
+    static thread_local std::string result_str;
+
     try {
+        if (api_key == nullptr) {
+            result_str = R"({"error":"null api_key"})";
+            return result_str.c_str();
+        }
+
         ParsedPacket pkt = get_binary(std::string(api_key));
+
+        // sensor 값이 비어 있을 가능성 방지용 예외 처리
+        if (pkt.sensor1 == 0 && pkt.sensor2 == 0 && pkt.sensor3 == 0 && pkt.sensor4 == 0) {
+            result_str = R"({"error":"invalid sensor data"})";
+            return result_str.c_str();
+        }
+
+        // JSON으로 변환
         json j = {
             {"sensor1", pkt.sensor1},
             {"sensor2", pkt.sensor2},
@@ -888,20 +905,14 @@ DLL_EXPORT const char* get_binary_json(const char* api_key) {
             {"led", pkt.led}
         };
 
-        std::string result_str = j.dump();
-        char* buffer = static_cast<char*>(malloc(result_str.length() + 1));
-        if (!buffer) return nullptr;
-
-        std::memcpy(buffer, result_str.c_str(), result_str.length() + 1);
-        return buffer;
-
+        result_str = j.dump();
+        return result_str.c_str();
     } catch (const std::exception& e) {
-        std::string error = R"({"error":")" + std::string(e.what()) + R"("})";
-        char* buffer = static_cast<char*>(malloc(error.length() + 1));
-        if (!buffer) return nullptr;
-
-        std::memcpy(buffer, error.c_str(), error.length() + 1);
-        return buffer;
+        result_str = R"({"error":")" + std::string(e.what()) + R"("})";
+        return result_str.c_str();
+    } catch (...) {
+        result_str = R"({"error":"unknown exception"})";
+        return result_str.c_str();
     }
 }
 
