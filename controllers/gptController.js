@@ -110,7 +110,13 @@ const postChatforDLL = async (req, res) => {
     });
   }
 
-  const data = JSON.parse(lib.get_binary_json(plant.sensor_key));
+  let dataRaw = lib.get_binary_json(plant.sensor_key);
+if (!dataRaw || typeof dataRaw !== "string" || !dataRaw.trim().startsWith("{")) {
+  console.error("⚠️ 센서 데이터 형식 오류:", dataRaw);
+  return res.status(500).json({ error: "센서 데이터를 불러오는 데 실패했습니다." });
+}
+const data = JSON.parse(dataRaw);
+
   const now = new Date();
   const createdAt = new Date(plant.createdAt);
   const diffMs = now - createdAt;
@@ -127,7 +133,12 @@ const postChatforDLL = async (req, res) => {
   await plant.save();
 
   //사용자 메세지 분석
-  const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
+  let analyzeUserRaw = lib.analyze_text(message, api_key);
+if (!analyzeUserRaw || typeof analyzeUserRaw !== "string" || !analyzeUserRaw.trim().startsWith("{")) {
+  console.error("⚠️ 사용자 분석 결과 형식 오류:", analyzeUserRaw);
+  return res.status(500).json({ error: "사용자 메시지 분석에 실패했습니다." });
+}
+const analyze_text_result_user = JSON.parse(analyzeUserRaw);
 
 
 
@@ -205,7 +216,13 @@ const postChatforDLL = async (req, res) => {
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
 
-  const analyze_text_result_ai = JSON.parse(lib.analyze_text(content, api_key));
+  let analyzeAiRaw = lib.analyze_text(content, api_key);
+if (!analyzeAiRaw || typeof analyzeAiRaw !== "string" || !analyzeAiRaw.trim().startsWith("{")) {
+  console.error("⚠️ 사용자 분석 결과 형식 오류:", analyzeAiRaw);
+  return res.status(500).json({ error: "사용자 메시지 분석에 실패했습니다." });
+}
+const analyze_text_result_ai = JSON.parse(analyzeAiRaw);
+
 
   //전체 기억 저장장
   const memoryDocs = [
