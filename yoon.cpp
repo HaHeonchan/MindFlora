@@ -876,13 +876,14 @@ const char* prompt_builder(const char* api, const char* plant_name) {
     }
 }
 
-//get_binary_json##########################################
-DLL_EXPORT
-const char* get_binary_json(const char* api_key) {
+extern "C" {
+  DLL_EXPORT const char* get_binary_json(const char* api_key);
+  DLL_EXPORT void free_string(const char* ptr);
+}
+
+DLL_EXPORT const char* get_binary_json(const char* api_key) {
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
-
-        // 구조체를 JSON으로 변환
         json j = {
             {"sensor1", pkt.sensor1},
             {"sensor2", pkt.sensor2},
@@ -893,18 +894,25 @@ const char* get_binary_json(const char* api_key) {
         };
 
         std::string result_str = j.dump();
-        char* buffer = (char*)malloc(result_str.size() + 1);
-        if (buffer == nullptr) return nullptr;
+        char* buffer = static_cast<char*>(malloc(result_str.length() + 1));
+        if (!buffer) return nullptr;
 
-        std::strcpy(buffer, result_str.c_str());
+        std::memcpy(buffer, result_str.c_str(), result_str.length() + 1);
         return buffer;
+
     } catch (const std::exception& e) {
         std::string error = R"({"error":")" + std::string(e.what()) + R"("})";
-        char* buffer = (char*)malloc(error.size() + 1);
-        if (buffer == nullptr) return nullptr;
-        std::strcpy(buffer, error.c_str());
+        char* buffer = static_cast<char*>(malloc(error.length() + 1));
+        if (!buffer) return nullptr;
+
+        std::memcpy(buffer, error.c_str(), error.length() + 1);
         return buffer;
     }
+}
+
+// Node.js에서 호출 가능
+DLL_EXPORT void free_string(const char* ptr) {
+    if (ptr) free((void*)ptr);
 }
 
 DLL_EXPORT

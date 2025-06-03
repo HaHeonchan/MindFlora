@@ -39,6 +39,7 @@ try {
     end_chat: ["void", []],
     add_nonsector_from_json: ["bool", ["string"]],
     post_binary_c: ["void", ["string", "uint8", "uint8", "uint8", "uint8"]],
+    free_string: ["void", ["string"]],
   });
 } catch (err) {
   console.error("❌ FFI 모듈 로딩 실패:", err.message);
@@ -112,6 +113,7 @@ const postChatforDLL = async (req, res) => {
 
   console.log("get_binary_json 실행");
 let dataRaw = lib.get_binary_json(plant.sensor_key);
+lib.free_string(dataRaw);
 if (!dataRaw || typeof dataRaw !== "string" || !dataRaw.trim().startsWith("{")) {
   console.error("⚠️ 센서 데이터 형식 오류:", dataRaw);
   return res.status(500).json({ error: "센서 데이터를 불러오는 데 실패했습니다." });

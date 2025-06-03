@@ -130,20 +130,23 @@ ParsedPacket get_binary(const string& api_key) {
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); //인증서 추가가
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); // 인증서 필요
 
     CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
     if (res != CURLE_OK) {
         cerr << "GET failed: " << curl_easy_strerror(res) << endl;
-        curl_easy_cleanup(curl);
         return pkt;
     }
 
     size_t i = 0;
-    while (i < response.size()) {
+    while (i + 10 <= response.size()) { // 최소 10바이트 보장
         string key = response.substr(i, 8); i += 8;
         uint8_t type = response[i++];
         uint8_t length = response[i++];
+
+        if (i + length > response.size()) break;
 
         if (type == 0x01 && length == 4) {
             pkt.sensor1 = response[i++];
@@ -158,13 +161,13 @@ ParsedPacket get_binary(const string& api_key) {
             pkt.led = response[i++];
         }
         else {
-            i += length;
+            i += length; // skip unknown
         }
     }
 
-    curl_easy_cleanup(curl);
     return pkt;
 }
+
 
 /*int main() {
     string api_key = "";
