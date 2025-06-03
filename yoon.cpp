@@ -877,11 +877,10 @@ const char* prompt_builder(const char* api, const char* plant_name) {
 
 //get_binary_json##########################################
 DLL_EXPORT
-const char* get_binary_json(const char* api_key) {
+extern "C" DLL_EXPORT char* get_binary_json(const char* api_key) {
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
 
-        // JSON으로 변환
         json j = {
             {"sensor1", pkt.sensor1},
             {"sensor2", pkt.sensor2},
@@ -891,11 +890,18 @@ const char* get_binary_json(const char* api_key) {
             {"led", pkt.led}
         };
 
-        std::string result_str = j.dump();
-        return strdup(result_str.c_str());  // ✅ 안전하게 복사된 포인터 반환
+        std::string result = j.dump();
+        char* result_cstr = (char*)malloc(result.size() + 1);
+        if (result_cstr == nullptr) return nullptr;
+        std::strcpy(result_cstr, result.c_str());
+        return result_cstr;
+
     } catch (const std::exception& e) {
-        std::string error_str = R"({"error":")" + std::string(e.what()) + R"("})";
-        return strdup(error_str.c_str());  // ✅ 마찬가지로 복사해서 반환
+        std::string err = std::string(R"({"error":")") + e.what() + R"("})";
+        char* err_cstr = (char*)malloc(err.size() + 1);
+        if (err_cstr == nullptr) return nullptr;
+        std::strcpy(err_cstr, err.c_str());
+        return err_cstr;
     }
 }
 

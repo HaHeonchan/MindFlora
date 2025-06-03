@@ -110,7 +110,8 @@ const postChatforDLL = async (req, res) => {
     });
   }
 
-  let dataRaw = lib.get_binary_json(plant.sensor_key);
+  console.log("get_binary_json 실행");
+let dataRaw = lib.get_binary_json(plant.sensor_key);
 if (!dataRaw || typeof dataRaw !== "string" || !dataRaw.trim().startsWith("{")) {
   console.error("⚠️ 센서 데이터 형식 오류:", dataRaw);
   return res.status(500).json({ error: "센서 데이터를 불러오는 데 실패했습니다." });
@@ -133,6 +134,8 @@ const data = JSON.parse(dataRaw);
   await plant.save();
 
   //사용자 메세지 분석
+  console.log("유저의 analyze_text 실행");
+
   let analyzeUserRaw = lib.analyze_text(message, api_key);
 if (!analyzeUserRaw || typeof analyzeUserRaw !== "string" || !analyzeUserRaw.trim().startsWith("{")) {
   console.error("⚠️ 사용자 분석 결과 형식 오류:", analyzeUserRaw);
@@ -193,6 +196,7 @@ const analyze_text_result_user = JSON.parse(analyzeUserRaw);
     }).join('\n');
   }
 
+  console.log("prompt_builder 실행");
   const prompt_builder_result = lib.prompt_builder(plant.sensor_key, "응애장대");
   const fullMessage =
   `
@@ -211,11 +215,13 @@ const analyze_text_result_user = JSON.parse(analyzeUserRaw);
     ${endless}
   `;
 
-  //gpt 호출출
+  //gpt 호출
+  console.log("gpt_json_string 실행");
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
 
+  console.log("ai의 analyze_text 실행");
   let analyzeAiRaw = lib.analyze_text(content, api_key);
 if (!analyzeAiRaw || typeof analyzeAiRaw !== "string" || !analyzeAiRaw.trim().startsWith("{")) {
   console.error("⚠️ 사용자 분석 결과 형식 오류:", analyzeAiRaw);
@@ -243,6 +249,7 @@ const getBinary = async (req, res) => {
   if (sensorKey == test_sensor_key) {
     console.log("테스트 API 키를 사용합니다.")
   };
+  console.log("get_binary_json 실행");
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
@@ -252,7 +259,9 @@ const postBinary = async (req, res) => {
   if (sensorKey == test_sensor_key) {
     console.log("테스트 API 키를 사용합니다.")
   };
+  console.log("post_binary_c 실행");
   lib.post_binary_c(sensorKey, (25 / 50) * 255.0, (50 / 100) * 255.0, (50 / 100) * 255.0, (500 / 1000) * 255.0);
+  console.log("get_binary_json 실행");
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
