@@ -41,7 +41,6 @@ void post_binary(const string& api_key, uint8_t sensor1, uint8_t sensor2, uint8_
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.data());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post_data.size());
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); //인증서 추가가
 
 
     CURLcode res = curl_easy_perform(curl);
@@ -130,7 +129,6 @@ ParsedPacket get_binary(const string& api_key) {
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); // 인증서 필요
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);

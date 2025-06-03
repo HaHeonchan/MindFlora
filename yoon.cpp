@@ -876,11 +876,6 @@ const char* prompt_builder(const char* api, const char* plant_name) {
     }
 }
 
-extern "C" {
-  DLL_EXPORT const char* get_binary_json(const char* api_key);
-  DLL_EXPORT void free_string(const char* ptr);
-}
-
 DLL_EXPORT const char* get_binary_json(const char* api_key) {
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
