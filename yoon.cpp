@@ -4,6 +4,7 @@
 #include "sqlite3.h"
 #include <curl/curl.h>
 #include <ctime>
+#include <cstdlib>
 #include <nlohmann/json.hpp>
 #include <string> 
 #include "moonsoo.h" //센서데이터
@@ -891,20 +892,17 @@ const char* get_binary_json(const char* api_key) {
             {"led", pkt.led}
         };
 
-        std::string jsonStr = j.dump();
+        std::string result_str = j.dump();
+        char* buffer = (char*)malloc(result_str.size() + 1);
+        if (buffer == nullptr) return nullptr;
 
-        // 동적 메모리 할당 후 문자열 복사
-        char* buffer = (char*)malloc(jsonStr.size() + 1);
-        if (!buffer) return "{\"error\":\"memory allocation failed\"}";
-
-        strcpy(buffer, jsonStr.c_str());
+        std::strcpy(buffer, result_str.c_str());
         return buffer;
     } catch (const std::exception& e) {
-        std::string errStr = std::string("{\"error\":\"") + e.what() + "\"}";
-        char* buffer = (char*)malloc(errStr.size() + 1);
-        if (!buffer) return "{\"error\":\"memory allocation failed\"}";
-
-        strcpy(buffer, errStr.c_str());
+        std::string error = R"({"error":")" + std::string(e.what()) + R"("})";
+        char* buffer = (char*)malloc(error.size() + 1);
+        if (buffer == nullptr) return nullptr;
+        std::strcpy(buffer, error.c_str());
         return buffer;
     }
 }
