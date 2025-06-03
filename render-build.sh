@@ -1,6 +1,9 @@
 #!/bin/bash
-echo "🛠️ Render 서버에서 mymodule.so 빌드 중..."
 
+echo "📦 sqlite3.c 컴파일 중..."
+g++ -c -o ./data/sqlite/sqlite3.o ./data/sqlite/sqlite3.c -I./data/sqlite
+
+echo "🔧 mymodule.so 생성 중..."
 g++ -shared -fPIC -o mymodule.so yoon.cpp \
   ./data/sqlite/sqlite3.o \
   -I./data/sqlite \
@@ -8,4 +11,4 @@ g++ -shared -fPIC -o mymodule.so yoon.cpp \
   -I./data/json \
   -lcurl -ldl -pthread
 
-echo "✅ 빌드 완료: mymodule.so 생성됨"
+echo "✅ 빌드 완료!"
