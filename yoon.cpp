@@ -883,14 +883,14 @@ const char* get_binary_json(const char* api_key) {
     try {
         ParsedPacket pkt = get_binary(std::string(api_key));
 
-        // 구조체를 JSON으로 변환
+        // 구조체를 JSON으로 변환 (명시적으로 정수 캐스팅)
         json j = {
-            {"sensor1", pkt.sensor1},
-            {"sensor2", pkt.sensor2},
-            {"sensor3", pkt.sensor3},
-            {"sensor4", pkt.sensor4},
-            {"onoff", pkt.onoff},
-            {"led", pkt.led}
+            {"sensor1", static_cast<int>(pkt.sensor1)},
+            {"sensor2", static_cast<int>(pkt.sensor2)},
+            {"sensor3", static_cast<int>(pkt.sensor3)},
+            {"sensor4", static_cast<int>(pkt.sensor4)},
+            {"onoff", static_cast<int>(pkt.onoff)},  // 핵심 수정
+            {"led", static_cast<int>(pkt.led)}       // 같이 수정 추천
         };
 
         result_str = j.dump();
@@ -912,6 +912,21 @@ void post_binary_c(const char* api_key, uint8_t s1, uint8_t s2, uint8_t s3, uint
         post_binary(string(api_key), s1, s2, s3, s4);
     } catch (const exception& e) {
         cerr << "[ERROR] post_binary_c 예외: " << e.what() << endl;
+    }
+}
+
+extern "C" DLL_EXPORT
+void onoff_bin_c(const char* api_key, uint8_t onoff, int led) {
+    if (!api_key || strlen(api_key) == 0) {
+        cerr << "[ERROR] API 키가 비어 있습니다." << endl;
+        return;
+    }
+
+    try {
+        // onoff가 0이 아니면 true, 0이면 false
+        onoff_bin(std::string(api_key), onoff != 0, led);
+    } catch (const std::exception& e) {
+        cerr << "[ERROR] onoff_bin_c 예외: " << e.what() << endl;
     }
 }
 

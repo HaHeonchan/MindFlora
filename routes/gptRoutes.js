@@ -19,6 +19,6 @@ router.get("/plant/:uid", gptController.getPlantDataByUid);
 router.post("/chat/dll", gptController.postChatforDLL);
 router
   .get("/sensor", gptController.getBinary)
-  .post("/sensor", gptController.postBinary);
-
+  .post("/sensor", gptController.postBinary)
+  .get("/sensor/decoded", gptController.getDecodedBinary);
 module.exports = router;

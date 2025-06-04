@@ -75,7 +75,7 @@ void onoff_bin(const string& api_key, bool onoff, int led) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.data());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post_data.size());
-
+        curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); //인증서 추가가
         res = curl_easy_perform(curl);
         if (res != CURLE_OK)
             cerr << "OnOff POST failed: " << curl_easy_strerror(res) << endl;
@@ -106,7 +106,7 @@ void onoff_bin(const string& api_key, bool onoff, int led) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.data());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post_data.size());
-
+        curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem"); //인증서 추가가
         res = curl_easy_perform(curl);
         if (res != CURLE_OK)
             cerr << "LED POST failed: " << curl_easy_strerror(res) << endl;
@@ -152,8 +152,9 @@ ParsedPacket get_binary(const string& api_key) {
             pkt.sensor4 = response[i++];
         }
         else if (type == 0x02 && length == 1) {
-            pkt.onoff = response[i++];
-        }
+    uint8_t val = response[i++];
+    pkt.onoff = (val == 'O');
+}
         else if (type == 0x03 && length == 1) {
             pkt.led = response[i++];
         }

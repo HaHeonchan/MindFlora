@@ -39,6 +39,7 @@ try {
     end_chat: ["void", []],
     add_nonsector_from_json: ["bool", ["string"]],
     post_binary_c: ["void", ["string", "uint8", "uint8", "uint8", "uint8"]],
+    onoff_bin_c: ['string', ['string', 'uint8', 'int']]
   });
 } catch (err) {
   console.error("❌ FFI 모듈 로딩 실패:", err.message);
@@ -130,9 +131,14 @@ if (plant_week < 1) {
   plant.growth_data = plant_week;
   await plant.save();
 
+
   //사용자 메세지 분석
   const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
-
+  let pump = 0
+  if(analyze_text_result_user.water_pump){
+    pump = 1;
+  }
+  lib.onoff_bin_c(test_sensor_key, analyze_text_result_user.water_pump, 100)
 
 
   if (!chatMemory[userId]) {
@@ -235,6 +241,32 @@ const getBinary = async (req, res) => {
   res.json({ test });
 };
 
+const getDecodedBinary = async (req, res) => {
+  const sensorKey = req.body?.sensorKey || test_sensor_key;
+  if (sensorKey === test_sensor_key) {
+    console.log("테스트 API 키를 사용합니다.");
+  }
+
+  const raw = JSON.parse(lib.get_binary_json(sensorKey)); // { sensor1, ..., onoff, led }
+  // 변환 수식 적용
+  const decodeSensor = (val, scale) =>
+    typeof val === 'number' ? Math.round((val / 255.0) * scale) : null;
+
+  const decoded = {
+    raw,
+    sensor: {
+      temp: decodeSensor(raw.sensor1, 50),
+      humidity: decodeSensor(raw.sensor2, 100),
+      soil: decodeSensor(raw.sensor3, 100),
+      light: decodeSensor(raw.sensor4, 1000),
+      onoff: raw.onoff,
+      led: raw.led,
+    }
+  };
+
+  res.json(decoded);
+};
+
 const postBinary = async (req, res) => {
   const sensorKey = req.body?.sensorKey || test_sensor_key;
   const { temp, humidity, soil, light } = req.body;
@@ -245,18 +277,6 @@ const postBinary = async (req, res) => {
   lib.post_binary_c(sensorKey, (temp / 50) * 255.0, (humidity / 100) * 255.0, (soil / 100) * 255.0, (light / 1000) * 255.0);
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
-};
-
-const testing = async (req, res) => {
-  try {
-    const audioStream = await textToSpeech("실시간으로 표 버리고 있다는게 사실인가요?");
-    const fs = require('fs');
-    const writeStream = fs.createWriteStream('voice.mp3');
-    audioStream.pipe(writeStream);
-    console.log('🎵 음성 파일 생성 완료: voice.mp3');
-  } catch (err) {
-    console.error('오류 발생:', err.message);
-  }
 };
 
 const postChat = async (req, res) => {
@@ -430,7 +450,7 @@ module.exports = {
   postChatforDLL,
   getBinary,
   postBinary,
-  testing,
+  getDecodedBinary,
 };
 
 function getSensorValue(apiKey) {
