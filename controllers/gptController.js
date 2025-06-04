@@ -258,7 +258,7 @@ const getDecodedBinary = async (req, res) => {
       temp: decodeSensor(raw.sensor1, 50),
       humidity: decodeSensor(raw.sensor2, 100),
       soil: decodeSensor(raw.sensor3, 100),
-      light: decodeSensor(raw.sensor4, 1000),
+      light: decodeSensor(raw.sensor4, 10000),
       onoff: raw.onoff,
       led: raw.led,
     }
@@ -274,7 +274,7 @@ const postBinary = async (req, res) => {
     console.log("테스트 API 키를 사용합니다.")
   };
 
-  lib.post_binary_c(sensorKey, (temp / 50) * 255.0, (humidity / 100) * 255.0, (soil / 100) * 255.0, (light / 1000) * 255.0);
+  lib.post_binary_c(sensorKey, (temp / 50) * 255.0, (humidity / 100) * 255.0, (soil / 100) * 255.0, (light / 10000) * 255.0);
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
