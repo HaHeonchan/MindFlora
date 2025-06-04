@@ -90,7 +90,12 @@ async function textToSpeech(text, emotion = 'neutral', intensity = 0.5) {
 
     return response.data;
   } catch (error) {
-    console.error('TTS API 호출 중 오류 발생:', error.message);
+    if (error.response) {
+      const { status, data } = error.response;
+      console.error(`TTS API 호출 실패 (상태: ${status}):`, data);
+    } else {
+      console.error('TTS API 호출 중 알 수 없는 오류:', error.message);
+    }
     throw new Error('음성 생성에 실패했습니다.');
   }
 }

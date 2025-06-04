@@ -40,30 +40,48 @@
   }
 
   async function sendMessage() {
-    const message = document.getElementById("message").value;
-    const chatBox = document.getElementById("chat-box");
+  const message = document.getElementById("message").value;
+  const chatBox = document.getElementById("chat-box");
 
-    if (!message) {
-      alert("메시지를 입력하세요!");
-      return;
-    }
-
-    chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
-
-    const response = await fetch("/chat/dll", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-      }),
-    });
-
-    const data = await response.json();
-    chatBox.innerHTML += `<p><strong>AI:</strong> ${data.response}</p>`;
-
-    document.getElementById("message").value = "";
-    chatBox.scrollTop = chatBox.scrollHeight;
+  if (!message) {
+    alert("메시지를 입력하세요!");
+    return;
   }
+
+  // 사용자 메시지 표시
+  chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
+
+  // AI 응답 가져오기
+  const response = await fetch("/chat/dll", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+
+  const data = await response.json();
+  const aiResponse = data.response;
+  chatBox.innerHTML += `<p><strong>AI:</strong> ${aiResponse}</p>`;
+
+  // TTS 자동 재생
+  const ttsRes = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: aiResponse,
+      emotion: "happy",     // 원하는 감정 선택 가능
+      intensity: 1
+    })
+  });
+
+  const ttsBlob = await ttsRes.blob();
+  const ttsUrl = URL.createObjectURL(ttsBlob);
+  const audio = new Audio(ttsUrl);
+  audio.play();
+
+  // 입력창 초기화 및 스크롤
+  document.getElementById("message").value = "";
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 </script>
 
 <style>

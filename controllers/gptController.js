@@ -247,6 +247,17 @@ const postBinary = async (req, res) => {
   res.json({ test });
 };
 
+const testing = async (req, res) => {
+  try {
+    const audioStream = await textToSpeech("실시간으로 표 버리고 있다는게 사실인가요?");
+    const fs = require('fs');
+    const writeStream = fs.createWriteStream('voice.mp3');
+    audioStream.pipe(writeStream);
+    console.log('🎵 음성 파일 생성 완료: voice.mp3');
+  } catch (err) {
+    console.error('오류 발생:', err.message);
+  }
+};
 
 const postChat = async (req, res) => {
   const { message, week, status, apiKey } = req.body;
@@ -419,6 +430,7 @@ module.exports = {
   postChatforDLL,
   getBinary,
   postBinary,
+  testing,
 };
 
 function getSensorValue(apiKey) {

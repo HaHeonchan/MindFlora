@@ -8,10 +8,12 @@ router.post('/tts', async (req, res) => {
     const { text, emotion, intensity } = req.body;
     
     // 스트림 설정
+    console.log("스트림 설정");
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Transfer-Encoding', 'chunked');
     
     // TTS 스트림을 클라이언트로 직접 전송
+    console.log("TTS 스트림");
     const audioStream = await textToSpeech(text, emotion, intensity);
     audioStream.pipe(res);
     
@@ -24,4 +26,4 @@ router.post('/tts', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
