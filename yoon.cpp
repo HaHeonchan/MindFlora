@@ -248,7 +248,7 @@ json gpt(const string& prompt, const string& api_key) {
         headers = curl_slist_append(headers, ("Authorization: Bearer " + api_key).c_str());
 
         //모델 설정
-        string model = "gpt-4.1-nano-2025-04-14";
+        string model = "gpt-4.1";
 
         // API 요청 본문 구성
         json request_body = {
@@ -690,71 +690,71 @@ string PromptBuilder(string api, string plant_name) {
     ChatCache* cache = ChatCache::getInstance();
     string base_prompt = "";
 
-    // 1. 기본 페르소나 프롬프트
-	base_prompt = "너의 이름은 " + plant_name + ". 당신은 지금 친한 친구와 대화하고 있다. 200자 이하로 감성적으로 답장하라";
+    // // 1. 기본 페르소나 프롬프트
+	// base_prompt = "너의 이름은 " + plant_name + ". 당신은 식물이며 친구이자 당신을 기르는 사람인 " + user_name + "과 대화하고 있다. 50자 이하로 답장하라";
 
-    // 2. 기억 통합 - 디버깅 정보 추가
-    cout << "[DEBUG] NonSector 개수: " << cache->memory.nonSector.size() << endl;
-    cout << "[DEBUG] Sector 개수: " << cache->memory.sector.size() << endl;
-    cout << "[DEBUG] Space 개수: " << cache->memory.space.size() << endl;
+    // // 2. 기억 통합 - 디버깅 정보 추가
+    // cout << "[DEBUG] NonSector 개수: " << cache->memory.nonSector.size() << endl;
+    // cout << "[DEBUG] Sector 개수: " << cache->memory.sector.size() << endl;
+    // cout << "[DEBUG] Space 개수: " << cache->memory.space.size() << endl;
 
-    // NonSector (최근 기억) - 개선된 순회
-    if (!cache->memory.nonSector.empty()) {
-        base_prompt += "\n\n[직전대화]";
-        int count = 0;
-        // 최신 것부터 보여주기 위해 역순으로 순회
-        for (auto it = cache->memory.nonSector.rbegin();
-            it != cache->memory.nonSector.rend() && count < 5;
-            ++it, ++count) {
-            base_prompt += "\n- [" + it->role + "] " + it->text;
-            // 키워드 정보도 추가
-            if (!it->key1.empty()) {
-                base_prompt += " (키워드: " + it->key1;
-                if (!it->key2.empty()) base_prompt += ", " + it->key2;
-                if (!it->key3.empty()) base_prompt += ", " + it->key3;
-                base_prompt += ")";
-            }
-        }
-    }
+    // // NonSector (최근 기억) - 개선된 순회
+    // if (!cache->memory.nonSector.empty()) {
+    //     base_prompt += "\n\n[직전대화]";
+    //     int count = 0;
+    //     // 최신 것부터 보여주기 위해 역순으로 순회
+    //     for (auto it = cache->memory.nonSector.rbegin();
+    //         it != cache->memory.nonSector.rend() && count < 5;
+    //         ++it, ++count) {
+    //         base_prompt += "\n- [" + it->role + "] " + it->text;
+    //         // 키워드 정보도 추가
+    //         if (!it->key1.empty()) {
+    //             base_prompt += " (키워드: " + it->key1;
+    //             if (!it->key2.empty()) base_prompt += ", " + it->key2;
+    //             if (!it->key3.empty()) base_prompt += ", " + it->key3;
+    //             base_prompt += ")";
+    //         }
+    //     }
+    // }
 
-    // Sector (중요 기억) - 개선
-    if (!cache->memory.sector.empty()) {
-        base_prompt += "\n\n[단기 중점기억]";
-        for (const auto& ans : cache->memory.sector) {
-            base_prompt += "\n- [중요] " + ans.text;
-            base_prompt += " (인상점수: " + to_string(ans.approval) + ")";
-        }
-    }
+    // // Sector (중요 기억) - 개선
+    // if (!cache->memory.sector.empty()) {
+    //     base_prompt += "\n\n[단기 중점기억]";
+    //     for (const auto& ans : cache->memory.sector) {
+    //         base_prompt += "\n- [중요] " + ans.text;
+    //         base_prompt += " (인상점수: " + to_string(ans.approval) + ")";
+    //     }
+    // }
 
-    // Space (요약된 기억) - 개선
-    if (!cache->memory.space.empty()) {
-        base_prompt += "\n\n[장기 열화기억]";
-        for (const auto& summary : cache->memory.space) {
-            base_prompt += "\n- [요약] " + summary;
-        }
-    }
+    // // Space (요약된 기억) - 개선
+    // if (!cache->memory.space.empty()) {
+    //     base_prompt += "\n\n[장기 열화기억]";
+    //     for (const auto& summary : cache->memory.space) {
+    //         base_prompt += "\n- [요약] " + summary;
+    //     }
+    // }
 
-    // Endless Memory 섹션 추가
-    if (!cache->memory.endless.empty()) {
-        base_prompt += "\n\n[장기기억]";
-        for (const auto& ans : cache->memory.endless) {
-            base_prompt += "\n- [영구] " + ans.text;
+    // // Endless Memory 섹션 추가
+    // if (!cache->memory.endless.empty()) {
+    //     base_prompt += "\n\n[장기기억]";
+    //     for (const auto& ans : cache->memory.endless) {
+    //         base_prompt += "\n- [영구] " + ans.text;
             
-            // 키워드 정보 추가
-            if (!ans.key1.empty()) {
-                base_prompt += " (키워드: " + ans.key1;
-                if (!ans.key2.empty()) base_prompt += ", " + ans.key2;
-                if (!ans.key3.empty()) base_prompt += ", " + ans.key3;
-                base_prompt += ")";
-            }
+    //         // 키워드 정보 추가
+    //         if (!ans.key1.empty()) {
+    //             base_prompt += " (키워드: " + ans.key1;
+    //             if (!ans.key2.empty()) base_prompt += ", " + ans.key2;
+    //             if (!ans.key3.empty()) base_prompt += ", " + ans.key3;
+    //             base_prompt += ")";
+    //         }
             
-            // 감정 강도 표시
-            base_prompt += " [감정 강도: " + to_string(ans.approval) + "]";
-        }
-    }
+    //         // 감정 강도 표시
+    //         base_prompt += " [감정 강도: " + to_string(ans.approval) + "]";
+    //     }
+    // }
 
-    // 디버깅 정보 추가
-    cout << "[DEBUG] Endless Memory 개수: " << cache->memory.endless.size() << endl;
+    // // 디버깅 정보 추가
+    // cout << "[DEBUG] Endless Memory 개수: " << cache->memory.endless.size() << endl;
 
     // 3. 현재 상태 프롬프트 추가 - 에러 처리 개선
     base_prompt += "\n\n현재 상태:";

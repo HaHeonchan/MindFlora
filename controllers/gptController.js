@@ -117,8 +117,8 @@ const postChatforDLL = async (req, res) => {
   const plant_week = Math.floor(diffMs * 1000000000 / (1000 * 60 * 60 * 24 * 7));
   if (plant_week == null) plant_week = 1;
 
-  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
   if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
+  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
   if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
   if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
   if (data.led !== undefined) plant.led_power = data.led;
@@ -136,32 +136,11 @@ const postChatforDLL = async (req, res) => {
     chatMemory[userId] = mems.map(m => ({ role: m.role, content: m.content }));
   }
 
-  const MAX_RECENT = 20;
-  let summary = "";
+  const MAX_RECENT = 10;
 
-  // if (chatMemory[userId].length > 100 && chatMemory[userId].length % 20 === 0) {
-  //   const oldHistory = chatMemory[userId].slice(0, -MAX_RECENT);
-  //   const previousSummary = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
+  const recentHistory = JSON.stringify(chatMemory[userId].slice(MAX_RECENT));
 
-  //   const summaryResponse = await openai.chat.completions.create({
-  //     model: "gpt-4.1-nano-2025-04-14",
-  //     messages: [
-  //       { role: "system", content: "다음 사용자-어시스턴트 대화를 요약해줘. 핵심만 간결하게 서술해줘." },
-  //       ...oldHistory
-  //     ],
-  //     max_tokens: 300,
-  //   });
-
-  //   summary = summaryResponse.choices?.[0]?.message?.content || "";
-  //   if (summary) {
-  //     await Summary.create({ uid: userId, content: summary });
-  //   }
-  // } else {
-  //   const existing = await Summary.findOne({ uid: userId }).sort({ createdAt: -1 });
-  //   summary = existing?.content || "";
-  // }
-
-  const recentHistory = chatMemory[userId].slice(MAX_RECENT);
+  const historyText = JSON.stringify(recentHistory);
 
   //장기&영구 기억 로드
   const memoryDoc = await LongTermMemory.findOne({ uid: userId });
@@ -182,23 +161,44 @@ const postChatforDLL = async (req, res) => {
     }).join('\n');
   }
 
+  const plantPrompt = loadPrompt(username);
   const prompt_builder_result = lib.prompt_builder(plant.sensor_key, "응애장대");
-  const fullMessage =
-  `
-    ${prompt_builder_result}
+//   const fullMessage =
+//   `
+//     ${plantPrompt}
+//     ${prompt_builder_result}
 
-    최근 대화 내역: ${recentHistory}
+//     사용자 메세지: ${message}
+  
+//   대화 내역: ${recentHistory}
 
-    친구 이름 : ${username}
+//   아래는 오래된 과거의 기억
+//   관련 정보가 꼭 필요한 것이 아니면
+//   아래 기억은 굳이 언급하지 말 것
+//   ${sector}
+//   ${endless}
+// `;
 
-    친구 메세지: ${message}
+const fullMessage = `
+[시스템 프롬프트]
+  ${plantPrompt}
 
-    인상깊었던 대화 기록:
-    ${sector}
+[식물 정보]
+${prompt_builder_result}
 
-    잊지 못할 순간의 대화 기록:
-    ${endless}
-  `;
+[과거 정보]
+(중요하지 않으면 언급하지 마세요)
+${sector}
+${endless}
+
+[최근 대화 내역]
+${historyText}
+
+[사용자 입력]
+"${message}"
+
+위 내용을 바탕으로 자연스럽고 연관성 있는 답변을 생성하세요.
+`;
 
   //gpt 호출출
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
@@ -218,7 +218,7 @@ const postChatforDLL = async (req, res) => {
   //장기기억 갱신
   memorize(userId, analyze_text_result_user, analyze_text_result_ai, message, content)
 
-  res.json({ response: content, prompt: fullMessage, analyzeUser: analyze_text_result_user, analyzeAi: analyze_text_result_ai });
+  res.json({ response: content, prompt: recentHistory, analyzeUser: analyze_text_result_user, analyzeAi: analyze_text_result_ai });
 };
 
 const getBinary = async (req, res) => {

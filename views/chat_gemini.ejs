@@ -1,32 +1,47 @@
-<h2 style="text-align: center; margin-bottom: 20px;">잼민이 챗봇</h2>
+<h2 style="text-align: center; margin-bottom: 20px;">GPT 챗봇</h2>
 
 <div id="chat-box"></div>
 
 <div class="chat-inputs">
   <input type="number" id="temp" placeholder="온도 (°C)" />
   <input type="number" id="humidity" placeholder="습도 (%)" />
-  <input type="number" id="week" placeholder="생애주기 주차" />
-  <input type="text" id="status" placeholder="상태를 입력하세요" />
-  <input type="text" id="apiKey" placeholder="apiKey를 입력하세요" />
+  <input type="number" id="soil" placeholder="토습을 입력하세요"/>
+  <input type="number" id="light" placeholder="광도 LUX"/>
+  <button onclick="postBinary()">데이터 전송</button>
+</div>
+
+<div class="chat-inputs">
   <input type="text" id="message" placeholder="메시지를 입력하세요" />
-  <button onclick="sendMessage()">전송</button>
+  <button onclick="sendMessage()">메세지 전송</button>
 </div>
 
 <script>
-  let userId = localStorage.getItem("geminiUserId");
-  if (!userId) {
-    userId = "user-" + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem("geminiUserId", userId);
+  let userId = "user-test";
+  let sensor_key = "1C3BFB6C"
+  
+  async function postBinary() {
+    const temp = document.getElementById("temp").value;
+    const humidity = document.getElementById("humidity").value;
+    const soil = document.getElementById("soil").value;
+    const light = document.getElementById("light").value;
+
+    const response = await fetch("/sensor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        temp,
+        humidity,
+        soil,
+        light
+      }),
+    });
+
+    alert("전송 완료!");
   }
 
   async function sendMessage() {
     const message = document.getElementById("message").value;
-    const status = document.getElementById("status").value;
-    const temp = document.getElementById("temp").value;
-    const humidity = document.getElementById("humidity").value;
-    const week = document.getElementById("week").value;
     const chatBox = document.getElementById("chat-box");
-    const apiKey = document.getElementById("apiKey").value;
 
     if (!message) {
       alert("메시지를 입력하세요!");
@@ -35,17 +50,11 @@
 
     chatBox.innerHTML += `<p><strong>사용자:</strong> ${message}</p>`;
 
-    const response = await fetch("/chat", {
+    const response = await fetch("/chat/dll", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        temp,
-        humidity,
-        week,
-        status,
-        apiKey,
-        userId
       }),
     });
 
