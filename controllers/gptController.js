@@ -112,10 +112,14 @@ const postChatforDLL = async (req, res) => {
 
   const data = JSON.parse(lib.get_binary_json(plant.sensor_key));
   const now = new Date();
-  const createdAt = new Date(plant.createdAt);
-  const diffMs = now - createdAt;
-  const plant_week = Math.floor(diffMs * 1000000000 / (1000 * 60 * 60 * 24 * 7));
-  if (plant_week == null) plant_week = 1;
+const createdAt = new Date(plant.createdAt);
+
+const diffMs = now - createdAt;
+const diffDays = diffMs / (1000 * 60 * 60 * 24);
+let plant_week = Math.floor(diffDays / 7);
+if (plant_week < 1) {
+  plant_week = 1;
+}
 
   if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
   if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
@@ -123,7 +127,7 @@ const postChatforDLL = async (req, res) => {
   if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
   if (data.led !== undefined) plant.led_power = data.led;
   if (data.onoff !== undefined) plant.led_onoff = data.onoff;
-  // plant.growth_data = plant_week;
+  plant.growth_data = plant_week;
   await plant.save();
 
   //사용자 메세지 분석
@@ -185,6 +189,7 @@ const fullMessage = `
 
 [식물 정보]
 ${prompt_builder_result}
+- 생애 주기 : ${plant_week}주차 째
 
 [과거 정보]
 (중요하지 않으면 언급하지 마세요)
@@ -200,7 +205,7 @@ ${historyText}
 위 내용을 바탕으로 자연스럽고 연관성 있는 답변을 생성하세요.
 `;
 
-  //gpt 호출출
+  //gpt 호출
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
   const responseObj = JSON.parse(gpt_json_string_result);
   const content = responseObj.choices?.[0]?.message?.content;
@@ -218,7 +223,7 @@ ${historyText}
   //장기기억 갱신
   memorize(userId, analyze_text_result_user, analyze_text_result_ai, message, content)
 
-  res.json({ response: content, prompt: recentHistory, analyzeUser: analyze_text_result_user, analyzeAi: analyze_text_result_ai });
+  res.json({ response: content, prompt: fullMessage, analyzeUser: analyze_text_result_user, analyzeAi: analyze_text_result_ai });
 };
 
 const getBinary = async (req, res) => {
@@ -232,10 +237,12 @@ const getBinary = async (req, res) => {
 
 const postBinary = async (req, res) => {
   const sensorKey = req.body?.sensorKey || test_sensor_key;
+  const { temp, humidity, soil, light } = req.body;
   if (sensorKey == test_sensor_key) {
     console.log("테스트 API 키를 사용합니다.")
   };
-  lib.post_binary_c(sensorKey, (25 / 50) * 255.0, (50 / 100) * 255.0, (50 / 100) * 255.0, (500 / 1000) * 255.0);
+
+  lib.post_binary_c(sensorKey, (temp / 50) * 255.0, (humidity / 100) * 255.0, (soil / 100) * 255.0, (light / 1000) * 255.0);
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
