@@ -771,7 +771,7 @@ string PromptBuilder(string api, string plant_name) {
         cout << "[DEBUG] 급수 펌프 onoff 값: " << (bool)sensorData.onoff << endl;
 
         // 온도 (sensor1: 0-50℃를 0-255로 매핑)
-        float temp = (sensorData.sensor1 / 255.0f) * 50.0f;
+        float temp = (sensorData.sensor1);
         base_prompt += "\n- 현재 온도: " + to_string(temp) + "℃";
 
         if (temp <= 15.0f) {
@@ -785,7 +785,7 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 습도 (sensor2: 0-100%를 0-255로 매핑)
-        float humidity = (sensorData.sensor2 / 255.0f) * 100.0f;
+        float humidity = (sensorData.sensor2);
         base_prompt += "\n- 현재 습도: " + to_string(humidity) + "%";
 
         if (humidity < 35.0f) {

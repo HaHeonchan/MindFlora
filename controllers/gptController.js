@@ -21,7 +21,7 @@ const getChatPage = () => "chat_gemini";
 
 const chatMemory = {};
 const api_key = process.env.OPENAI_API_KEY;
-const test_sensor_key = '1C3BFB6C';
+const test_sensor_key = '4FC259BF';
 
 let lib = null;
 
@@ -111,9 +111,9 @@ const postChatforDLL = async (req, res) => {
     });
   }
 
-  const data = JSON.parse(lib.get_binary_json(plant.sensor_key));
+  const data = JSON.parse(lib.get_binary_json(test_sensor_key));
   const now = new Date();
-const createdAt = new Date(plant.createdAt);
+  const createdAt = new Date(plant.createdAt);
 
 const diffMs = now - createdAt;
 const diffDays = diffMs / (1000 * 60 * 60 * 24);
@@ -146,11 +146,12 @@ if (plant_week < 1) {
     chatMemory[userId] = mems.map(m => ({ role: m.role, content: m.content }));
   }
 
-  const MAX_RECENT = 10;
+  const MAX_RECENT = 3;
+  const historySlice = chatMemory[userId].slice(-MAX_RECENT); 
+  
+  const historyText = historySlice.map(m => `[${m.role}] ${m.content}`).join('\n');
 
-  const recentHistory = JSON.stringify(chatMemory[userId].slice(MAX_RECENT));
-
-  const historyText = JSON.stringify(recentHistory);
+  // const historyText = JSON.stringify(recentHistory);
 
   //장기&영구 기억 로드
   const memoryDoc = await LongTermMemory.findOne({ uid: userId });
@@ -172,36 +173,22 @@ if (plant_week < 1) {
   }
 
   const plantPrompt = loadPrompt(username);
-  const prompt_builder_result = lib.prompt_builder(plant.sensor_key, "응애장대");
-//   const fullMessage =
-//   `
-//     ${plantPrompt}
-//     ${prompt_builder_result}
-
-//     사용자 메세지: ${message}
-  
-//   대화 내역: ${recentHistory}
-
-//   아래는 오래된 과거의 기억
-//   관련 정보가 꼭 필요한 것이 아니면
-//   아래 기억은 굳이 언급하지 말 것
-//   ${sector}
-//   ${endless}
-// `;
+  const prompt_builder_result = lib.prompt_builder(test_sensor_key, "응애장대");
 
 const fullMessage = `
 [시스템 프롬프트]
-  ${plantPrompt}
+${plantPrompt}
 
 [식물 정보]
 ${prompt_builder_result}
 - 생애 주기 : ${plant_week}주차 째
 
 [과거 정보]
-(중요하지 않으면 언급하지 마세요)
+중요하지 않으면 언급하지 마
 ${sector}
 ${endless}
 
+이전 대화는 참고만, 현재 사용자의 입력을 최우선으로 반응.
 [최근 대화 내역]
 ${historyText}
 
@@ -255,10 +242,10 @@ const getDecodedBinary = async (req, res) => {
   const decoded = {
     raw,
     sensor: {
-      temp: decodeSensor(raw.sensor1, 50),
-      humidity: decodeSensor(raw.sensor2, 100),
-      soil: decodeSensor(raw.sensor3, 100),
-      light: decodeSensor(raw.sensor4, 10000),
+      temp: raw.sensor1,
+      humidity: raw.sensor2,
+      soil: raw.sensor3,
+      light: raw.sensor4,
       onoff: raw.onoff,
       led: raw.led,
     }
@@ -274,7 +261,7 @@ const postBinary = async (req, res) => {
     console.log("테스트 API 키를 사용합니다.")
   };
 
-  lib.post_binary_c(sensorKey, (temp / 50) * 255.0, (humidity / 100) * 255.0, (soil / 100) * 255.0, (light / 10000) * 255.0);
+  lib.post_binary_c(sensorKey, temp, humidity, soil, light);
   const test = JSON.parse(lib.get_binary_json(sensorKey));
   res.json({ test });
 };
@@ -517,17 +504,17 @@ function memorize(uid, newUserMemory, newAiMemory, user_content, ai_content) {
     timestamp: Date.now(),
   };
 
-  if (user.approval >= 9) {
+  if (user.approval >= 9 && assistant.approval >= 9) {
     addToEndlessMemory(uid, user)
-  } else if (user.approval >= 3) {
+  } else if (user.approval >= 3 && assistant.approval >= 3) {
     addToSectorMemory(uid, user)
   }
 
-  if (assistant.approval >= 9) {
-    addToEndlessMemory(uid, assistant)
-  } else if (assistant.approval >= 3) {
-    addToSectorMemory(uid, assistant)
-  }
+  // if (assistant.approval >= 9) {
+  //   addToEndlessMemory(uid, assistant)
+  // } else if (assistant.approval >= 3) {
+  //   addToSectorMemory(uid, assistant)
+  // }
 };
 
 // 장기 기억 추가 (최대 10개)
