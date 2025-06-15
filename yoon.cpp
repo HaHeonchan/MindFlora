@@ -813,14 +813,14 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 조도 (sensor4: 0-1000 lux를 0-255로 매핑)
-        float lightLux = (sensorData.sensor4 / 255.0f) * 1000.0f;
+        float lightLux = (sensorData.sensor4);
         base_prompt += "\n- 조도: " + to_string(lightLux) + " lux";
 
-        if (lightLux < 200.0f) {
+        if (lightLux < 30.0f) {
             base_prompt += " → 너무 어두워요. 햇빛을 보고싶어요";
         }
-        else if (lightLux > 800.0f) {
-            base_prompt += " → 햇빛이 너무 강해요. 잎이 탈 수도 있어요";
+        else if (lightLux < 160.0f) {
+            base_prompt += " → 서늘한 곳에 있어요. 너무 밝지도 어둡지도 않아요";
         }
         else {
             base_prompt += " → 빛이 딱 좋아요! 광합성하기 좋아요";
@@ -835,20 +835,19 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 감정 상태 추가 (평균 승인도 기반)
-        base_prompt += "\n- 최근 기분: ";
-        if (avg_aproval >= 7.0f) {
-            base_prompt += "매우 행복해요!";
-        }
-        else if (avg_aproval >= 5.0f) {
-            base_prompt += "기분이 좋아요";
-        }
-        else if (avg_aproval >= 3.0f) {
-            base_prompt += "평범해요";
-        }
-        else {
-            base_prompt += "조금 우울해요";
-        }
-
+        // base_prompt += "\n- 최근 기분: ";
+        // if (avg_aproval >= 7.0f) {
+        //     base_prompt += "매우 행복해요!";
+        // }
+        // else if (avg_aproval >= 5.0f) {
+        //     base_prompt += "기분이 좋아요";
+        // }
+        // else if (avg_aproval >= 3.0f) {
+        //     base_prompt += "평범해요";
+        // }
+        // else {
+        //     base_prompt += "조금 우울해요";
+        // }
     }
     catch (const exception& e) {
         cout << "[ERROR] 센서 데이터 읽기 실패: " << e.what() << endl;

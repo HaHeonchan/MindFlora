@@ -9,6 +9,8 @@ const os = require("os");
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
+const User = require("../db/user");
+
 const Memory = require("../db/memory");
 const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
@@ -100,44 +102,56 @@ const postChatforDLL = async (req, res) => {
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
-  let plant = await Plant.findOne({ uid: userId });
-  if (!plant) {
-    plant = new Plant({
-      uid: userId,
-      nickname: "애기장대",
-      plant_kind: "애기장대",
-      temperature_data: [],
-      humidity_data: [],
-      soil_moisture_data: [],
-      light_data: [],
-      led_power: 0,
-      led_onoff: false,
-      growth_data: 0,
-      sensor_key: "1C3BFB6C"
-    });
+  try {
+    let user = await User.findOne({uid: userId});
+    username = user.nickname;  
+  } catch (err) {
+    console.warn("유저 이름 가져오기 실패, 테스트 이름 사용:", err.message);
   }
 
-  const data = JSON.parse(lib.get_binary_json(test_sensor_key));
-  const now = new Date();
-  const createdAt = new Date(plant.createdAt);
+let plant = await Plant.findOne({ uid: userId });
 
-const diffMs = now - createdAt;
-const diffDays = diffMs / (1000 * 60 * 60 * 24);
-let plant_week = Math.floor(diffDays / 7);
-if (plant_week < 1) {
-  plant_week = 1;
+let isNewPlant = false;
+
+if (!plant) {
+  isNewPlant = true;
+  plant = new Plant({
+    uid: userId,
+    nickname: "애기장대",
+    plant_kind: "애기장대",
+    temperature_data: [],
+    humidity_data: [],
+    soil_moisture_data: [],
+    light_data: [],
+    led_power: 0,
+    led_onoff: false,
+    growth_data: 1,
+    sensor_key: test_sensor_key
+  });
 }
 
-  if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
-  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
-  if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
-  if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
-  if (data.led !== undefined) plant.led_power = data.led;
-  if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+const data = JSON.parse(lib.get_binary_json(test_sensor_key));
+
+if (!isNewPlant) {
+  const now = new Date();
+  const createdAt = new Date(plant.createdAt);
+  const diffMs = now - createdAt;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  let plant_week = Math.floor(diffDays / 7);
+  if (plant_week < 1) {
+    plant_week = 1;
+  }
   plant.growth_data = plant_week;
-  await plant.save();
+}
 
+if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
+if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
+if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
+if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
+if (data.led !== undefined) plant.led_power = data.led;
+if (data.onoff !== undefined) plant.led_onoff = data.onoff;
 
+await plant.save();
   //사용자 메세지 분석
   const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
   let pump = 0
@@ -156,8 +170,6 @@ if (plant_week < 1) {
   const historySlice = chatMemory[userId].slice(-MAX_RECENT); 
   
   const historyText = historySlice.map(m => `[${m.role}] ${m.content}`).join('\n');
-
-  // const historyText = JSON.stringify(recentHistory);
 
   //장기&영구 기억 로드
   const memoryDoc = await LongTermMemory.findOne({ uid: userId });
@@ -187,7 +199,7 @@ ${plantPrompt}
 
 [식물 정보]
 ${prompt_builder_result}
-- 생애 주기 : ${plant_week}주차 째
+- 생애 주기 : ${plant.growth_data}주차 째
 
 [과거 정보]
 중요하지 않으면 언급하지 마
