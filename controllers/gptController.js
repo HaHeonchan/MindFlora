@@ -14,6 +14,7 @@ const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
 const LongTermMemory = require("../db/longTermMemory");
 const { json } = require("stream/consumers");
+const User = require("../db/user")
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -77,16 +78,21 @@ const postChatforDLL = async (req, res) => {
   // };
   // const success = lib.add_nonsector_from_json(JSON.stringify(answer));
 
-  const { message, apiKey, name } = req.body;
-  const { token } = req.cookies;
+  const { message } = req.body;
+  const encodedToken = req.headers['authorization'].split(' ')[1]
 
   let userId = "user-test"; // 기본값 설정
-  const username = name || "홍길동";
+  const username = "홍길동";
 
+  // User DB 활용해서 정보 가져오기
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(encodedToken, process.env.JWT_SECRET);
     if (decoded && decoded.uid) {
-      userId = decoded.uid;
+      const uid = decoded.uid
+
+      userId = uid;
+      const user = await User.findOne({ id: uid })
+      username = user.nickname
     }
   } catch (err) {
     console.warn("JWT 검증 실패, 테스트 아이디 사용:", err.message);
@@ -379,7 +385,7 @@ const postChat = async (req, res) => {
     await Memory.insertMany(memoryDocs);
     chatMemory[userId].push(...memoryDocs.map(({ role, content }) => ({ role, content })));
 
-    await Chat.create({ uid: userId, reqText: fullMessage, resText: reply, sender: "user" });
+    await Chat.create({ uid: userId, reqText: fullMessage, resText: reply });
     res.json({ response: reply });
   } catch (err) {
     console.error("GPT 호출 에러:", err.response?.data || err.message || err);
@@ -416,8 +422,8 @@ const loadPrompt = (variables = {}) => {
 };
 
 const getChatLogsByUid = async (req, res) => {
-  const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET);
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET);
   try {
     const chats = await Chat.find({ uid });
     const diaryReplies = await diaryReplyDB.find({ uid });

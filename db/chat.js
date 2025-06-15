@@ -11,7 +11,6 @@ const chatSchema = Schema(
     uid: String,
     reqText: String,
     resText: String,
-    sender: String,
   },
   { timestamps: true }
 );

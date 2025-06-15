@@ -5,10 +5,16 @@
  */
 const express = require("express")
 const router = express.Router()
-const { createDiaryWithReply } = require("../controllers/diaryController")
-const diaryReply = require("../db/diaryReply")
+const { createDiaryWithReply, getDiaries } = require("../controllers/diaryController")
 
-router.post("/", createDiaryWithReply)
-
+/**
+ * TODO:
+ * - 일기 가져오는 API
+ * - 식물이 작성한 일기에 답장 남기는 API
+ */
+router
+.get("/", getDiaries)
+.post("/", createDiaryWithReply)
+.post("/reply", )
 
 module.exports = router

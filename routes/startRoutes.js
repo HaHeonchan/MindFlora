@@ -8,7 +8,7 @@ const { kakaoLogin, setPlantNickname, plantKindSelect, userAddressSave } = requi
 const router = express.Router();
 
 // kakao 로그인 라우터
-router.get("/login", kakaoLogin);
+router.post("/login", kakaoLogin);
 
 // 식물 애칭 설정 라우터
 router.post("/nickname", setPlantNickname);

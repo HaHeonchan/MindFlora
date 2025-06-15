@@ -30,15 +30,14 @@ const diaryHistories = {};
 // POST /diary
 const createDiaryWithReply = async (req, res) => {
   const { title, content, image } = req.body;
-  const { token } = req.cookies;
+  const encodedToken = req.headers['authorization'].split(' ')[1]
 
   if (!title || !content) {
     return res.status(400).json({ error: "제목과 내용은 필수입니다." });
   }
 
   try {
-    // const { uid } = jwt.verify(token, process.env.JWT_SECRET);
-    const uid = "user-gjscks";
+    const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET) ?? 'user-test';
 
     // 사용자 히스토리 초기화
     if (!diaryHistories[uid]) {
@@ -100,6 +99,24 @@ const createDiaryWithReply = async (req, res) => {
   }
 };
 
+const getDiaries = async(req, res) => {
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.decode(encodedToken, process.env.JWT_SECRET)
+
+  const diaries = await Diary.find({ uid: uid })
+
+  res.status(200).json(diaries)
+}
+
+const createDiaryReply = async(req, res) => {
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.decode(encodedToken, process.env.JWT_SECRET)
+
+  
+}
+
 module.exports = {
   createDiaryWithReply,
+  getDiaries,
+  createDiaryReply
 };
