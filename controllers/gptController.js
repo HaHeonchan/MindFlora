@@ -82,7 +82,7 @@ const postChatforDLL = async (req, res) => {
   const { message, apiKey, name } = req.body;
   const { token } = req.cookies;
 
-  let userId = "user-test"; // 기본값 설정
+  let userId = "user-test-p"; // 기본값 설정
   const username = name || "홍길동";
 
   try {
@@ -147,8 +147,6 @@ if (data.led !== undefined) plant.led_power = data.led;
 if (data.onoff !== undefined) plant.led_onoff = data.onoff;
 
 await plant.save();
-
-
   //사용자 메세지 분석
   const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
   let pump = 0
@@ -167,8 +165,6 @@ await plant.save();
   const historySlice = chatMemory[userId].slice(-MAX_RECENT); 
   
   const historyText = historySlice.map(m => `[${m.role}] ${m.content}`).join('\n');
-
-  // const historyText = JSON.stringify(recentHistory);
 
   //장기&영구 기억 로드
   const memoryDoc = await LongTermMemory.findOne({ uid: userId });

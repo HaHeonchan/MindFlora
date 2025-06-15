@@ -835,20 +835,19 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 감정 상태 추가 (평균 승인도 기반)
-        base_prompt += "\n- 최근 기분: ";
-        if (avg_aproval >= 7.0f) {
-            base_prompt += "매우 행복해요!";
-        }
-        else if (avg_aproval >= 5.0f) {
-            base_prompt += "기분이 좋아요";
-        }
-        else if (avg_aproval >= 3.0f) {
-            base_prompt += "평범해요";
-        }
-        else {
-            base_prompt += "조금 우울해요";
-        }
-
+        // base_prompt += "\n- 최근 기분: ";
+        // if (avg_aproval >= 7.0f) {
+        //     base_prompt += "매우 행복해요!";
+        // }
+        // else if (avg_aproval >= 5.0f) {
+        //     base_prompt += "기분이 좋아요";
+        // }
+        // else if (avg_aproval >= 3.0f) {
+        //     base_prompt += "평범해요";
+        // }
+        // else {
+        //     base_prompt += "조금 우울해요";
+        // }
     }
     catch (const exception& e) {
         cout << "[ERROR] 센서 데이터 읽기 실패: " << e.what() << endl;
