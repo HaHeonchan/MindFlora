@@ -16,6 +16,7 @@ const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
 const LongTermMemory = require("../db/longTermMemory");
 const { json } = require("stream/consumers");
+const chat = require("../db/chat");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -218,6 +219,8 @@ ${historyText}
 
   const analyze_text_result_ai = JSON.parse(lib.analyze_text(content, api_key));
 
+
+
   //전체 기억 저장장
   const memoryDocs = [
     { uid: userId, role: "user", content: message },
@@ -226,6 +229,7 @@ ${historyText}
   await Memory.insertMany(memoryDocs);
   chatMemory[userId].push(...memoryDocs.map(({ role, content }) => ({ role, content })));
 
+  await Chat.create({ uid: userId, reqText: message, resText: content, sender: "user" });
   //장기기억 갱신
   memorize(userId, analyze_text_result_user, analyze_text_result_ai, message, content)
 
