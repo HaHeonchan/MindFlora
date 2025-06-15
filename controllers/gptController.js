@@ -233,7 +233,7 @@ ${historyText}
   await Memory.insertMany(memoryDocs);
   chatMemory[userId].push(...memoryDocs.map(({ role, content }) => ({ role, content })));
 
-  await Chat.create({ uid: userId, reqText: message, resText: content, sender: "user" });
+  await Chat.create({ uid: userId, reqText: message, resText: content });
   //장기기억 갱신
   memorize(userId, analyze_text_result_user, analyze_text_result_ai, message, content)
 
