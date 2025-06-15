@@ -799,7 +799,7 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 토양 습도 (sensor3: 0-100%를 0-255로 매핑)
-        float soilMoisture = (sensorData.sensor3);
+        float soilMoisture = (sensorData.sensor3 / 255.0f) * 100.0f;
         base_prompt += "\n- 토양 습도: " + to_string(soilMoisture) + "%";
 
         if (soilMoisture < 30.0f) {
@@ -816,11 +816,11 @@ string PromptBuilder(string api, string plant_name) {
         float lightLux = (sensorData.sensor4);
         base_prompt += "\n- 조도: " + to_string(lightLux) + " lux";
 
-        if (lightLux < 200.0f) {
+        if (lightLux < 30.0f) {
             base_prompt += " → 너무 어두워요. 햇빛을 보고싶어요";
         }
-        else if (lightLux > 800.0f) {
-            base_prompt += " → 햇빛이 너무 강해요. 잎이 탈 수도 있어요";
+        else if (lightLux < 160.0f) {
+            base_prompt += " → 서늘한 곳에 있어요. 너무 밝지도 어둡지도 않아요";
         }
         else {
             base_prompt += " → 빛이 딱 좋아요! 광합성하기 좋아요";

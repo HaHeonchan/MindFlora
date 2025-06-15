@@ -9,6 +9,8 @@ const os = require("os");
 
 const Chat = require("../db/chat");
 const Plant = require("../db/plant");
+const User = require("../db/user");
+
 const Memory = require("../db/memory");
 const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
@@ -88,11 +90,19 @@ const postChatforDLL = async (req, res) => {
     if (decoded && decoded.uid) {
       userId = decoded.uid;
     }
+  
   } catch (err) {
     console.warn("JWT 검증 실패, 테스트 아이디 사용:", err.message);
   }
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
+
+  try {
+    let user = await User.findOne({uid: userId});
+    username = user.nickname;  
+  } catch (err) {
+    console.warn("유저 이름 가져오기 실패, 테스트 이름 사용:", err.message);
+  }
 
 let plant = await Plant.findOne({ uid: userId });
 
