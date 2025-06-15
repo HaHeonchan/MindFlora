@@ -17,8 +17,10 @@ const plantDB = require("../db/plant")
 const kakaoLogin = async(req, res) => {
     try {
         const { id, nickname, email, profileImage } = req.body;
+        const { id, nickname, email, profileImage } = req.body;
 
         // user overlap verify using email
+        const isOverlap = await userDB.findOne({ email: email })
         const isOverlap = await userDB.findOne({ email: email })
         if (isOverlap) {
             // making jwt
@@ -26,6 +28,7 @@ const kakaoLogin = async(req, res) => {
             console.log(payload)
             const jwtToken = jwt.sign(payload, process.env.JWT_SECRET)
 
+            // TODO: 계정이 있을 시 루트 처리
             return res.status(200)
             .cookie("token", jwtToken, { httpOnly: true })
             .redirect(`${process.env.FE_PORT}/main/status`)
@@ -34,7 +37,7 @@ const kakaoLogin = async(req, res) => {
         const kakaoUserInfo = {
             nickname: nickname,
             profile_image: profileImage,
-            email: email
+            email: email,
         }
 
         // user create
@@ -47,8 +50,9 @@ const kakaoLogin = async(req, res) => {
             const payload = { uid: newUser._id }
             console.log(payload)
             const token = jwt.sign(payload, process.env.JWT_SECRET)
+            const token = jwt.sign(payload, process.env.JWT_SECRET)
 
-            res.status(200).send({ token })
+            res.status(200).json({ token })
         })
         .catch(error => {
             console.log("Kakao login user create fail")
@@ -69,10 +73,10 @@ const kakaoLogin = async(req, res) => {
  */
 const setPlantNickname = async(req, res) => {
     try {
-        const token = req.headers['authorization']
+        const encodedToken = req.headers['authorization'].split(' ')[1]
         const { plantNickname } = req.body
 
-        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+        const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET)
         
         const plantInfo = {
             uid: uid,
@@ -106,10 +110,10 @@ const setPlantNickname = async(req, res) => {
  */
 const plantKindSelect = async(req, res) => {
     try {
-        const token = req.headers['authorization']
+        const encodedToken = req.headers['authorization'].split(' ')[1]
         const { plantKind } = req.body
 
-        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+        const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET)
 
         const plantInfo = { plant_kind: plantKind }
 
@@ -139,10 +143,10 @@ const plantKindSelect = async(req, res) => {
  */
 const userAddressSave = async(req, res) => {
     try {
-        const token = req.headers['authorization']
+        const encodedToken = req.headers['authorization'].split(' ')[1]
         const { address } = req.body
 
-        const { uid } = jwt.verify(token, process.env.JWT_SECRET)
+        const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET)
 
         const addressInfo = {
             address: address.address + " " + address.detailAddress

@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const Diary = require("../db/diary");
+const DiaryReply = require("../db/diaryReply")
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -30,15 +31,14 @@ const diaryHistories = {};
 // POST /diary
 const createDiaryWithReply = async (req, res) => {
   const { title, content, image } = req.body;
-  const { token } = req.cookies;
+  const encodedToken = req.headers['authorization'].split(' ')[1]
 
   if (!title || !content) {
     return res.status(400).json({ error: "제목과 내용은 필수입니다." });
   }
 
   try {
-    // const { uid } = jwt.verify(token, process.env.JWT_SECRET);
-    const uid = "user-gjscks";
+    const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET) ?? 'user-test';
 
     // 사용자 히스토리 초기화
     if (!diaryHistories[uid]) {
@@ -100,6 +100,41 @@ const createDiaryWithReply = async (req, res) => {
   }
 };
 
+const getDiaries = async(req, res) => {
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.decode(encodedToken, process.env.JWT_SECRET)
+
+  const diaries = await Diary.find({ uid: uid })
+
+  res.status(200).json(diaries)
+}
+
+const createDiaryReply = async(req, res) => {
+  const { diaryId, content, sender } = req.body
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.decode(encodedToken, process.env.JWT_SECRET)
+
+  await DiaryReply.create(DiaryReply(
+    uid,
+    sender,
+    diaryId,
+    content,
+  ))
+
+  res.status(200).send("diary reply created")
+}
+
+const getDiaryReply = async(req, res) => {
+  const { id } = req.params
+
+  const diaryReply = await DiaryReply.findOne({ diary_id: id })
+
+  res.status(200).json(diaryReply)
+}
+
 module.exports = {
   createDiaryWithReply,
+  getDiaries,
+  createDiaryReply,
+  getDiaryReply
 };
