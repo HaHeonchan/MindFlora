@@ -5,7 +5,7 @@
  */
 const express = require("express")
 const router = express.Router()
-const { createDiaryWithReply, getDiaries } = require("../controllers/diaryController")
+const { createDiaryWithReply, getDiaries, createDiaryReply, getDiaryReply } = require("../controllers/diaryController")
 
 /**
  * TODO:
@@ -14,7 +14,8 @@ const { createDiaryWithReply, getDiaries } = require("../controllers/diaryContro
  */
 router
 .get("/", getDiaries)
+.get("/reply/:id", getDiaryReply)
 .post("/", createDiaryWithReply)
-.post("/reply", )
+.post("/reply", createDiaryReply)
 
 module.exports = router

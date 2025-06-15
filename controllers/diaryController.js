@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const Diary = require("../db/diary");
+const DiaryReply = require("../db/diaryReply")
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -109,14 +110,31 @@ const getDiaries = async(req, res) => {
 }
 
 const createDiaryReply = async(req, res) => {
+  const { diaryId, content, sender } = req.body
   const encodedToken = req.headers['authorization'].split(' ')[1]
   const { uid } = jwt.decode(encodedToken, process.env.JWT_SECRET)
 
-  
+  await DiaryReply.create(DiaryReply(
+    uid,
+    sender,
+    diaryId,
+    content,
+  ))
+
+  res.status(200).send("diary reply created")
+}
+
+const getDiaryReply = async(req, res) => {
+  const { id } = req.params
+
+  const diaryReply = await DiaryReply.findOne({ diary_id: id })
+
+  res.status(200).json(diaryReply)
 }
 
 module.exports = {
   createDiaryWithReply,
   getDiaries,
-  createDiaryReply
+  createDiaryReply,
+  getDiaryReply
 };

@@ -83,7 +83,7 @@ const postChatforDLL = async (req, res) => {
   const { message } = req.body;
   const encodedToken = req.headers['authorization'].split(' ')[1]
 
-  let userId = "user-test"; // 기본값 설정
+  let userId = "user-test-p"; // 기본값 설정
   const username = "홍길동";
 
   // User DB 활용해서 정보 가져오기
