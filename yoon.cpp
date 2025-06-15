@@ -799,7 +799,7 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 토양 습도 (sensor3: 0-100%를 0-255로 매핑)
-        float soilMoisture = (sensorData.sensor3 / 255.0f) * 100.0f;
+        float soilMoisture = (sensorData.sensor3);
         base_prompt += "\n- 토양 습도: " + to_string(soilMoisture) + "%";
 
         if (soilMoisture < 30.0f) {
@@ -813,7 +813,7 @@ string PromptBuilder(string api, string plant_name) {
         }
 
         // 조도 (sensor4: 0-1000 lux를 0-255로 매핑)
-        float lightLux = (sensorData.sensor4 / 255.0f) * 1000.0f;
+        float lightLux = (sensorData.sensor4);
         base_prompt += "\n- 조도: " + to_string(lightLux) + " lux";
 
         if (lightLux < 200.0f) {

@@ -16,37 +16,10 @@ const plantDB = require("../db/plant")
  */
 const kakaoLogin = async(req, res) => {
     try {
-        const { code } = req.query
-
-        const body = {
-            grant_type: "authorization_code",
-            client_id: process.env.KAKAO_REST_API_KEY,
-            redirect_uri: process.env.KAKAO_REDIRECT_URI,
-            code: code
-        }
-
-        // get kakao access token
-        const kakaoToken = await axios.post(`https://kauth.kakao.com/oauth/token`, 
-            body,
-            {
-                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" }
-            }
-        )
-
-        // get kakao user data
-        const kakaoUserData = await axios.get(`https://kapi.kakao.com/v2/user/me`, 
-            { 
-                headers: {
-                    Authorization: `Bearer ${kakaoToken.data.access_token}`,
-                    "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"
-                }
-            }
-        )
-
-        const kakaoUser = kakaoUserData.data.kakao_account
+        const { id, nickname, email, profileImage } = req.body;
 
         // user overlap verify using email
-        const isOverlap = await userDB.findOne({ email: kakaoUser.email })
+        const isOverlap = await userDB.findOne({ email: email })
         if (isOverlap) {
             // making jwt
             const payload = { uid: isOverlap._id }
@@ -59,9 +32,9 @@ const kakaoLogin = async(req, res) => {
         }
 
         const kakaoUserInfo = {
-            nickname: kakaoUser.profile.nickname,
-            profile_image: kakaoUser.profile.profile_image_url,
-            email: kakaoUser.email,
+            nickname: nickname,
+            profile_image: profileImage,
+            email: email
         }
 
         // user create
@@ -73,11 +46,9 @@ const kakaoLogin = async(req, res) => {
             const newUser = await userDB.findOne({ email: kakaoUserInfo.email })
             const payload = { uid: newUser._id }
             console.log(payload)
-            const jwtToken = jwt.sign(payload, process.env.JWT_SECRET)
+            const token = jwt.sign(payload, process.env.JWT_SECRET)
 
-            res.status(200)
-            .cookie("token", jwtToken, { httpOnly: true })
-            .redirect(`${process.env.FE_PORT}/start/access`)
+            res.status(200).send({ token })
         })
         .catch(error => {
             console.log("Kakao login user create fail")
@@ -98,7 +69,7 @@ const kakaoLogin = async(req, res) => {
  */
 const setPlantNickname = async(req, res) => {
     try {
-        const { token } = req.cookies
+        const token = req.headers['authorization']
         const { plantNickname } = req.body
 
         const { uid } = jwt.verify(token, process.env.JWT_SECRET)
@@ -135,7 +106,7 @@ const setPlantNickname = async(req, res) => {
  */
 const plantKindSelect = async(req, res) => {
     try {
-        const { token } = req.cookies
+        const token = req.headers['authorization']
         const { plantKind } = req.body
 
         const { uid } = jwt.verify(token, process.env.JWT_SECRET)
@@ -168,7 +139,7 @@ const plantKindSelect = async(req, res) => {
  */
 const userAddressSave = async(req, res) => {
     try {
-        const { token } = req.cookies
+        const token = req.headers['authorization']
         const { address } = req.body
 
         const { uid } = jwt.verify(token, process.env.JWT_SECRET)

@@ -94,42 +94,49 @@ const postChatforDLL = async (req, res) => {
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
-  let plant = await Plant.findOne({ uid: userId });
-  if (!plant) {
-    plant = new Plant({
-      uid: userId,
-      nickname: "애기장대",
-      plant_kind: "애기장대",
-      temperature_data: [],
-      humidity_data: [],
-      soil_moisture_data: [],
-      light_data: [],
-      led_power: 0,
-      led_onoff: false,
-      growth_data: 0,
-      sensor_key: "1C3BFB6C"
-    });
-  }
+let plant = await Plant.findOne({ uid: userId });
 
-  const data = JSON.parse(lib.get_binary_json(test_sensor_key));
-  const now = new Date();
-  const createdAt = new Date(plant.createdAt);
+let isNewPlant = false;
 
-const diffMs = now - createdAt;
-const diffDays = diffMs / (1000 * 60 * 60 * 24);
-let plant_week = Math.floor(diffDays / 7);
-if (plant_week < 1) {
-  plant_week = 1;
+if (!plant) {
+  isNewPlant = true;
+  plant = new Plant({
+    uid: userId,
+    nickname: "애기장대",
+    plant_kind: "애기장대",
+    temperature_data: [],
+    humidity_data: [],
+    soil_moisture_data: [],
+    light_data: [],
+    led_power: 0,
+    led_onoff: false,
+    growth_data: 1,
+    sensor_key: test_sensor_key
+  });
 }
 
-  if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
-  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
-  if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
-  if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
-  if (data.led !== undefined) plant.led_power = data.led;
-  if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+const data = JSON.parse(lib.get_binary_json(test_sensor_key));
+
+if (!isNewPlant) {
+  const now = new Date();
+  const createdAt = new Date(plant.createdAt);
+  const diffMs = now - createdAt;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  let plant_week = Math.floor(diffDays / 7);
+  if (plant_week < 1) {
+    plant_week = 1;
+  }
   plant.growth_data = plant_week;
-  await plant.save();
+}
+
+if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
+if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
+if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
+if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
+if (data.led !== undefined) plant.led_power = data.led;
+if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+
+await plant.save();
 
 
   //사용자 메세지 분석
@@ -181,7 +188,7 @@ ${plantPrompt}
 
 [식물 정보]
 ${prompt_builder_result}
-- 생애 주기 : ${plant_week}주차 째
+- 생애 주기 : ${plant.growth_data}주차 째
 
 [과거 정보]
 중요하지 않으면 언급하지 마
