@@ -16,6 +16,7 @@ const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
 const LongTermMemory = require("../db/longTermMemory");
 const { json } = require("stream/consumers");
+const ObjectId = require('mongodb').ObjectId;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -24,6 +25,7 @@ const getChatPage = () => "chat_gemini";
 const chatMemory = {};
 const api_key = process.env.OPENAI_API_KEY;
 const test_sensor_key = '4FC259BF';
+
 
 let lib = null;
 
@@ -79,34 +81,32 @@ const postChatforDLL = async (req, res) => {
   // };
   // const success = lib.add_nonsector_from_json(JSON.stringify(answer));
 
-  const { message } = req.body;
-  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const message = req.body.reqText;
 
-  let userId = "user-test-p"; // 기본값 설정
-  const username = "홍길동";
+  let userId = "68539ca4353e1d2a9f15aace"; // 기본값 설정
+  let username = "홍길동";
 
   // User DB 활용해서 정보 가져오기
   try {
+    const encodedToken = req.headers['authorization'].split(' ')[1]
     const decoded = jwt.verify(encodedToken, process.env.JWT_SECRET);
     if (decoded && decoded.uid) {
       const uid = decoded.uid
-
       userId = uid;
-      const user = await User.findOne({ id: uid })
-      username = user.nickname
     }
   } catch (err) {
-    console.warn("JWT 검증 실패, 테스트 아이디 사용:", err.message);
+    console.warn("토큰 불러오기기 실패, 테스트 아이디 사용:", err.message);
+  }
+
+  try {
+    const user = await User.findOne({ _id: new ObjectId(userId) })
+    username = user.nickname
+  } catch (err) {
+    console.warn("유저저 조회 실패, 테스트 이름름 사용:", err.message);
   }
 
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
-  try {
-    let user = await User.findOne({uid: userId});
-    username = user.nickname;  
-  } catch (err) {
-    console.warn("유저 이름 가져오기 실패, 테스트 이름 사용:", err.message);
-  }
 
 let plant = await Plant.findOne({ uid: userId });
 
@@ -149,12 +149,15 @@ if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
 if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
 if (data.led !== undefined) plant.led_power = data.led;
 if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+//test
+plant.sensor_key = test_sensor_key;
+
 
 await plant.save();
   //사용자 메세지 분석
   const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
   let pump = 0
-  if(analyze_text_result_user.water_pump){
+  if(analyze_text_result_user.water_pump && data.sensor3 <= 70.0){
     pump = 1;
   }
   lib.onoff_bin_c(test_sensor_key, analyze_text_result_user.water_pump, 100)
@@ -194,11 +197,13 @@ await plant.save();
 
 const fullMessage = `
 [시스템 프롬프트]
+사용자 이름: ${username}
 ${plantPrompt}
 
 [식물 정보]
+- 식물의 이름(별명): ${plant.nickname}
 ${prompt_builder_result}
-- 생애 주기 : ${plant.growth_data}주차 째
+- 생애 주기: ${plant.growth_data}주차 째
 
 [과거 정보]
 중요하지 않으면 언급하지 마
@@ -408,8 +413,8 @@ const postChat = async (req, res) => {
 };
 
 const getPlantDataByUid = async (req, res) => {
-  const { token } = req.cookies;
-  const { uid } = jwt.verify(token, process.env.JWT_SECRET);
+  const encodedToken = req.headers['authorization'].split(' ')[1]
+  const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET);
   try {
     const plant = await Plant.findOne({ uid });
     if (!plant) return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
@@ -440,8 +445,8 @@ const getChatLogsByUid = async (req, res) => {
   const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET);
   try {
     const chats = await Chat.find({ uid });
-    const diaryReplies = await diaryReplyDB.find({ uid });
-    const log = [...chats, ...diaryReplies].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    //const diaryReplies = await diaryReplyDB.find({ uid });
+    const log = [...chats].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json({ uid, logs: log });
   } catch (err) {
     console.error("채팅 로그 조회 오류:", err);
