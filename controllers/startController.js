@@ -17,10 +17,8 @@ const plantDB = require("../db/plant")
 const kakaoLogin = async(req, res) => {
     try {
         const { id, nickname, email, profileImage } = req.body;
-        const { id, nickname, email, profileImage } = req.body;
 
         // user overlap verify using email
-        const isOverlap = await userDB.findOne({ email: email })
         const isOverlap = await userDB.findOne({ email: email })
         if (isOverlap) {
             // making jwt
@@ -49,7 +47,6 @@ const kakaoLogin = async(req, res) => {
             const newUser = await userDB.findOne({ email: kakaoUserInfo.email })
             const payload = { uid: newUser._id }
             console.log(payload)
-            const token = jwt.sign(payload, process.env.JWT_SECRET)
             const token = jwt.sign(payload, process.env.JWT_SECRET)
 
             res.status(200).json({ token })

@@ -16,7 +16,6 @@ const Summary = require("../db/summary");
 const diaryReplyDB = require("../db/diaryReply");
 const LongTermMemory = require("../db/longTermMemory");
 const { json } = require("stream/consumers");
-const User = require("../db/user")
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
