@@ -115,10 +115,10 @@ const postChatforDLL = async (req, res) => {
       uid: userId,
       nickname: "애기장대",
       plant_kind: "애기장대",
-      temperature_data: [],
-      humidity_data: [],
-      soil_moisture_data: [],
-      light_data: [],
+      temperature_data: 0,
+      humidity_data: 0,
+      soil_moisture_data: 0,
+      light_data: 0,
       led_power: 0,
       led_onoff: false,
       growth_data: 1,
@@ -140,10 +140,10 @@ const postChatforDLL = async (req, res) => {
     plant.growth_data = plant_week;
   }
 
-  if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
-  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
-  if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
-  if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
+  if (data.sensor1 !== undefined) plant.temperature_data = data.sensor1;
+  if (data.sensor2 !== undefined) plant.humidity_data = data.sensor2;
+  if (data.sensor3 !== undefined) plant.soil_moisture_data = data.sensor3;
+  if (data.sensor4 !== undefined) plant.light_data = data.sensor4;
   if (data.led !== undefined) plant.led_power = data.led;
   if (data.onoff !== undefined) plant.led_onoff = data.onoff;
   //test
