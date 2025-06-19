@@ -829,7 +829,11 @@ string PromptBuilder(string api, string plant_name) {
         // 급수 펌프 (onoff)
         base_prompt += "\n- 급수 펌프: " + to_string(sensorData.onoff);
         if(sensorData.onoff) {
-            base_prompt += "\n- 급수 펌프: 켜짐 → 시원하게 물이 들어오고 있어요. 목이 축여져서 기분이 좋아요.";
+            if(soilMoisture > 75.0f) {
+                base_prompt += "\n- 급수 펌프: 꺼짐 → 지금은 물이 많아요. 지금은 괜찮으니 나중에 주세요!";
+            } else {
+                base_prompt += "\n- 급수 펌프: 켜짐 → 시원하게 물이 들어오고 있어요. 목이 축여져서 기분이 좋아요.";
+            }
         } else {
             base_prompt += "\n- 급수 펌프: 꺼짐 → 물이 멈췄어요. 지금은 괜찮지만 나중에 또 줘요!";
         }

@@ -24,12 +24,10 @@ const kakaoLogin = async(req, res) => {
             // making jwt
             const payload = { uid: isOverlap._id }
             console.log(payload)
-            const jwtToken = jwt.sign(payload, process.env.JWT_SECRET)
+            const token = jwt.sign(payload, process.env.JWT_SECRET)
 
             // TODO: 계정이 있을 시 루트 처리
-            return res.status(200)
-            .cookie("token", jwtToken, { httpOnly: true })
-            .redirect(`${process.env.FE_PORT}/main/status`)
+            return res.status(200).json({ isOverlap: true, token})
         }
 
         const kakaoUserInfo = {
@@ -49,7 +47,7 @@ const kakaoLogin = async(req, res) => {
             console.log(payload)
             const token = jwt.sign(payload, process.env.JWT_SECRET)
 
-            res.status(200).json({ token })
+            res.status(200).json({ isOverlap: false, token })
         })
         .catch(error => {
             console.log("Kakao login user create fail")
@@ -141,12 +139,12 @@ const plantKindSelect = async(req, res) => {
 const userAddressSave = async(req, res) => {
     try {
         const encodedToken = req.headers['authorization'].split(' ')[1]
-        const { address } = req.body
+        const { address, detailAddress } = req.body
 
         const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET)
 
         const addressInfo = {
-            address: address.address + " " + address.detailAddress
+            address: address + " " + detailAddress
         }
 
         await userDB.findByIdAndUpdate(uid, addressInfo)

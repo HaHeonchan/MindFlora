@@ -14,7 +14,7 @@ router
   .post("/chat", gptController.postChat);
 
 router.get("/chat/logs", gptController.getChatLogsByUid);
-router.get("/plant/:uid", gptController.getPlantDataByUid);
+router.get("/plant", gptController.getPlantDataByUid);
 
 router.post("/chat/dll", gptController.postChatforDLL);
 router
