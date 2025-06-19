@@ -13,12 +13,13 @@ router
   })
   .post("/chat", gptController.postChat);
 
-router.get("/chat/logs", gptController.getChatLogsByUid);
-router.get("/plant", gptController.getPlantDataByUid);
+router
+  .get("/chat/logs", gptController.getChatLogsByUid)
+  .post("/chat/dll", gptController.postChatforDLL);
 
-router.post("/chat/dll", gptController.postChatforDLL);
 router
   .get("/sensor", gptController.getBinary)
   .post("/sensor", gptController.postBinary)
   .get("/sensor/decoded", gptController.getDecodedBinary);
+
 module.exports = router;

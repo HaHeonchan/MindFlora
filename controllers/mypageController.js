@@ -17,11 +17,10 @@ const jwt = require("jsonwebtoken")
  * HTTP Method: GET
  */
 const getUserInfo = async(req, res) => {
-    const { token } = req.cookies
+    const encodedToken = req.headers['authorization'].split(' ')[1]
+    const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET);
 
-    const { uid } = jwt.verify(token, process.env.JWT_SECRET)
-
-    const userInfo = await userDB.findById(uid, { nickname: 1, profile_image: 1 })
+    const userInfo = await userDB.findById(uid)
     const plantInfo = await plantDB.findOne({ uid: uid }, { nickname: 1, createdAt: 1 })
 
     const today = new Date()
@@ -31,10 +30,9 @@ const getUserInfo = async(req, res) => {
     console.log(today, createdAt)
 
     const myInfo = {
-        userNickname: userInfo.nickname,
+        nickname: userInfo.nickname,
         profileImage: userInfo.profile_image,
-        plantNickname: plantInfo.nickname,
-        plantDday: plantDday
+        email: userInfo.email
     }
 
     res.status(200).send(myInfo)

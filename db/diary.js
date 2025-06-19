@@ -11,7 +11,6 @@ const diarySchema = Schema({
     image: String,
     title: String,
     content: String,
-    reply: String,
     writer: String,    
 }, { timestamps: true })
 
