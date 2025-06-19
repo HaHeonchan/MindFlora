@@ -1,7 +1,6 @@
 const OpenAI = require("openai");
 const jwt = require("jsonwebtoken");
 const ffi = require("ffi-napi");
-const ref = require('ref-napi');
 const fs = require("fs");
 const path = require("path");
 const https = require('https');
@@ -13,9 +12,7 @@ const User = require("../db/user");
 
 const Memory = require("../db/memory");
 const Summary = require("../db/summary");
-const diaryReplyDB = require("../db/diaryReply");
 const LongTermMemory = require("../db/longTermMemory");
-const { json } = require("stream/consumers");
 const ObjectId = require('mongodb').ObjectId;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -108,52 +105,52 @@ const postChatforDLL = async (req, res) => {
   if (!message) return res.status(400).json({ error: "메시지를 입력하세요." });
 
 
-let plant = await Plant.findOne({ uid: userId });
+  let plant = await Plant.findOne({ uid: userId });
 
-let isNewPlant = false;
+  let isNewPlant = false;
 
-if (!plant) {
-  isNewPlant = true;
-  plant = new Plant({
-    uid: userId,
-    nickname: "애기장대",
-    plant_kind: "애기장대",
-    temperature_data: [],
-    humidity_data: [],
-    soil_moisture_data: [],
-    light_data: [],
-    led_power: 0,
-    led_onoff: false,
-    growth_data: 1,
-    sensor_key: test_sensor_key
-  });
-}
-
-const data = JSON.parse(lib.get_binary_json(test_sensor_key));
-
-if (!isNewPlant) {
-  const now = new Date();
-  const createdAt = new Date(plant.createdAt);
-  const diffMs = now - createdAt;
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  let plant_week = Math.floor(diffDays / 7);
-  if (plant_week < 1) {
-    plant_week = 1;
+  if (!plant) {
+    isNewPlant = true;
+    plant = new Plant({
+      uid: userId,
+      nickname: "애기장대",
+      plant_kind: "애기장대",
+      temperature_data: [],
+      humidity_data: [],
+      soil_moisture_data: [],
+      light_data: [],
+      led_power: 0,
+      led_onoff: false,
+      growth_data: 1,
+      sensor_key: test_sensor_key
+    });
   }
-  plant.growth_data = plant_week;
-}
 
-if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
-if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
-if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
-if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
-if (data.led !== undefined) plant.led_power = data.led;
-if (data.onoff !== undefined) plant.led_onoff = data.onoff;
-//test
-plant.sensor_key = test_sensor_key;
+  const data = JSON.parse(lib.get_binary_json(test_sensor_key));
+
+  if (!isNewPlant) {
+    const now = new Date();
+    const createdAt = new Date(plant.createdAt);
+    const diffMs = now - createdAt;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    let plant_week = Math.floor(diffDays / 7);
+    if (plant_week < 1) {
+      plant_week = 1;
+    }
+    plant.growth_data = plant_week;
+  }
+
+  if (data.sensor1 !== undefined) plant.temperature_data.push(data.sensor1);
+  if (data.sensor2 !== undefined) plant.humidity_data.push(data.sensor2);
+  if (data.sensor3 !== undefined) plant.soil_moisture_data.push(data.sensor3);
+  if (data.sensor4 !== undefined) plant.light_data.push(data.sensor4);
+  if (data.led !== undefined) plant.led_power = data.led;
+  if (data.onoff !== undefined) plant.led_onoff = data.onoff;
+  //test
+  plant.sensor_key = test_sensor_key;
 
 
-await plant.save();
+  await plant.save();
   //사용자 메세지 분석
   const analyze_text_result_user = JSON.parse(lib.analyze_text(message, api_key));
   let pump = 0
@@ -195,30 +192,30 @@ await plant.save();
   const plantPrompt = loadPrompt(username);
   const prompt_builder_result = lib.prompt_builder(test_sensor_key, "응애장대");
 
-const fullMessage = `
-[시스템 프롬프트]
-사용자 이름: ${username}
-${plantPrompt}
+  const fullMessage = `
+  [시스템 프롬프트]
+  사용자 이름: ${username}
+  ${plantPrompt}
 
-[식물 정보]
-- 식물의 이름(별명): ${plant.nickname}
-${prompt_builder_result}
-- 생애 주기: ${plant.growth_data}주차 째
+  [식물 정보]
+  - 식물의 이름(별명): ${plant.nickname}
+  ${prompt_builder_result}
+  - 생애 주기: ${plant.growth_data}주차 째
 
-[과거 정보]
-중요하지 않으면 언급하지 마
-${sector}
-${endless}
+  [과거 정보]
+  중요하지 않으면 언급하지 마
+  ${sector}
+  ${endless}
 
-이전 대화는 참고만, 현재 사용자의 입력을 최우선으로 반응.
-[최근 대화 내역]
-${historyText}
+  이전 대화는 참고만, 현재 사용자의 입력을 최우선으로 반응.
+  [최근 대화 내역]
+  ${historyText}
 
-[사용자 입력]
-"${message}"
+  [사용자 입력]
+  "${message}"
 
-위 내용을 바탕으로 자연스럽고 연관성 있는 답변을 생성하세요.
-`;
+  위 내용을 바탕으로 자연스럽고 연관성 있는 답변을 생성하세요.
+  `;
 
   //gpt 호출
   const gpt_json_string_result = lib.gpt_json_string(fullMessage, api_key);
@@ -412,19 +409,6 @@ const postChat = async (req, res) => {
   }
 };
 
-const getPlantDataByUid = async (req, res) => {
-  const encodedToken = req.headers['authorization'].split(' ')[1]
-  const { uid } = jwt.verify(encodedToken, process.env.JWT_SECRET);
-  try {
-    const plant = await Plant.findOne({ uid });
-    if (!plant) return res.status(404).json({ error: "해당 사용자의 식물 정보가 없습니다." });
-    res.send(plant);
-  } catch (err) {
-    console.error("식물 정보 조회 오류:", err);
-    res.status(500).json({ error: "식물 정보를 불러올 수 없습니다." });
-  }
-};
-
 const loadPrompt = (variables = {}) => {
   try {
     const promptPath = path.join(__dirname, "../prompt/prompt.txt");
@@ -458,7 +442,6 @@ module.exports = {
   getChatPage,
   postChat,
   getChatLogsByUid,
-  getPlantDataByUid,
   postChatforDLL,
   getBinary,
   postBinary,

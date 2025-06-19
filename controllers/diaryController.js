@@ -30,7 +30,7 @@ const diaryHistories = {};
 
 // POST /diary
 const createDiaryWithReply = async (req, res) => {
-  const { title, content, image } = req.body;
+  const { title, content } = req.body;
   const encodedToken = req.headers['authorization'].split(' ')[1]
 
   if (!title || !content) {
@@ -72,7 +72,7 @@ const createDiaryWithReply = async (req, res) => {
     });
 
     const result = await chatSession.sendMessage(prompt);
-    const reply = await result.response.text();
+    const reply = result.response.text();
 
     diaryHistories[uid].push({
       role: "model",
@@ -83,12 +83,20 @@ const createDiaryWithReply = async (req, res) => {
       uid,
       title,
       content,
-      image,
-      reply,
+      image: req?.file?.location ?? null,
       writer: "user",
     });
 
-    await diary.save();
+    const diary_id = await diary.save();
+
+    const newDiaryReply = new DiaryReply({
+      uid,
+      sender: "plant",
+      diary_id: diary_id._id,
+      content: reply ?? null
+    })
+
+    await newDiaryReply.save()
 
     res.status(200).json({
       message: "일기와 응답이 저장되었습니다.",

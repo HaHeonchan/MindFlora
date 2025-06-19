@@ -18,6 +18,7 @@ const plantSchema = Schema({
   led_onoff: Boolean,
   growth_data: Number,
   sensor_key: String,
+  plant_profile: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model("Plant", plantSchema);

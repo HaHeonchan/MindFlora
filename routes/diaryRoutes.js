@@ -6,16 +6,12 @@
 const express = require("express")
 const router = express.Router()
 const { createDiaryWithReply, getDiaries, createDiaryReply, getDiaryReply } = require("../controllers/diaryController")
+const { upload } = require("../middleware")
 
-/**
- * TODO:
- * - 일기 가져오는 API
- * - 식물이 작성한 일기에 답장 남기는 API
- */
 router
 .get("/", getDiaries)
 .get("/reply/:id", getDiaryReply)
-.post("/", createDiaryWithReply)
+.post("/", upload.single('file'), createDiaryWithReply)
 .post("/reply", createDiaryReply)
 
 module.exports = router
