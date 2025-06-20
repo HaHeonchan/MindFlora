@@ -788,10 +788,10 @@ string PromptBuilder(string api, string plant_name) {
         float humidity = (sensorData.sensor2);
         base_prompt += "\n- 현재 습도: " + to_string(humidity) + "%";
 
-        if (humidity < 35.0f) {
+        if (humidity < 40.0f) {
             base_prompt += " → 공기가 너무 건조해서 목이 마르고 잎이 바스락거려요";
         }
-        else if (humidity > 65.0f) {
+        else if (humidity > 70.0f) {
             base_prompt += " → 습도가 너무 높아서 숨쉬기가 답답해요";
         }
         else {
@@ -802,10 +802,10 @@ string PromptBuilder(string api, string plant_name) {
         float soilMoisture = (sensorData.sensor3 / 255.0f) * 100.0f;
         base_prompt += "\n- 토양 습도: " + to_string(soilMoisture) + "%";
 
-        if (soilMoisture < 30.0f) {
+        if (soilMoisture < 89.0f) {
             base_prompt += " → 뿌리가 마르고 있어요. 물을 주세요!";
         }
-        else if (soilMoisture > 75.0f) {
+        else if (soilMoisture > 128.0f) {
             base_prompt += " → 물이 너무 많아서 뿌리가 숨을 못 쉬어요!";
         }
         else {
@@ -816,10 +816,10 @@ string PromptBuilder(string api, string plant_name) {
         float lightLux = (sensorData.sensor4);
         base_prompt += "\n- 조도: " + to_string(lightLux) + " lux";
 
-        if (lightLux < 30.0f) {
+        if (lightLux < 80.0f) {
             base_prompt += " → 너무 어두워요. 햇빛을 보고싶어요";
         }
-        else if (lightLux < 160.0f) {
+        else if (lightLux < 190.0f) {
             base_prompt += " → 서늘한 곳에 있어요. 너무 밝지도 어둡지도 않아요";
         }
         else {
@@ -829,7 +829,7 @@ string PromptBuilder(string api, string plant_name) {
         // 급수 펌프 (onoff)
         base_prompt += "\n- 급수 펌프: " + to_string(sensorData.onoff);
         if(sensorData.onoff) {
-            if(soilMoisture > 75.0f) {
+            if(soilMoisture > 128.0f) {
                 base_prompt += "\n- 급수 펌프: 꺼짐 → 지금은 물이 많아요. 지금은 괜찮으니 나중에 주세요!";
             } else {
                 base_prompt += "\n- 급수 펌프: 켜짐 → 시원하게 물이 들어오고 있어요. 목이 축여져서 기분이 좋아요.";
